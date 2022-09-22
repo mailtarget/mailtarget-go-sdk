@@ -34,7 +34,7 @@ func TestMessage_IsValid_ErrorTextIsEmpty(t *testing.T) {
 
 func TestMessage_IsValid_ErrorZeroRecipient(t *testing.T) {
 	layang := NewLayang(privateAPIKey)
-	message := layang.NewMessage(subject, body, html, sender, Recipient{Address: []Address{}})
+	message := layang.NewMessage(subject, body, html, sender, Recipient{Address: Address{}})
 	err := message.IsValid()
 	assert.Error(t, err)
 }
@@ -53,17 +53,10 @@ func TestMessage_IsValid_Error(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestMessage_SetHtml_Success(t *testing.T) {
+func TestMessage_IsValid_ErrorHtmlNotValid(t *testing.T) {
 	layang := NewLayang(privateAPIKey)
-	message := layang.NewMessage(subject, body, html, sender, wrongRecipient)
-	err := message.SetHtml(html)
-	assert.NoError(t, err)
-}
-
-func TestMessage_SetHtml_Error(t *testing.T) {
-	layang := NewLayang(privateAPIKey)
-	message := layang.NewMessage(subject, body, wrongHtml, sender, wrongRecipient)
-	err := message.SetHtml(wrongHtml)
+	message := layang.NewMessage(subject, body, wrongHtml, sender, recipient)
+	err := message.IsValid()
 	assert.Error(t, err)
 }
 

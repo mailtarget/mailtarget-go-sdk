@@ -27,12 +27,12 @@ func TestSend_Success(t *testing.T) {
 	message.SetAttachment(attachments)
 
 	//mock http
-	//httpmock.ActivateNonDefault(layang.resty.GetClient())
-	//defer httpmock.DeactivateAndReset()
-	//httpmock.RegisterResponder("POST", "http://localhost:3000/v1/send",
-	//	func(req *http.Request) (*http.Response, error) {
-	//		return httpmock.NewJsonResponse(200, successResponse)
-	//	})
+	httpmock.ActivateNonDefault(layang.resty.GetClient())
+	defer httpmock.DeactivateAndReset()
+	httpmock.RegisterResponder("POST", "https://smtpdevconf.mtarget.id/v1/layang/transmissions",
+		func(req *http.Request) (*http.Response, error) {
+			return httpmock.NewJsonResponse(200, successResponse)
+		})
 
 	//send
 	successResponseActual, _, _ := layang.Send(message)

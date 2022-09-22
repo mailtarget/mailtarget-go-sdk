@@ -2,30 +2,38 @@ package layang
 
 import (
 	"errors"
+	"fmt"
 )
 
 type Message struct {
-	Subject    string
-	Html       string
-	Text       string
-	Recipients Recipient
-	From       Address
-	Attachment []Attachment
+	Subject           string            `json:"subject"`
+	Html              string            `json:"html"`
+	Text              string            `json:"text"`
+	Recipients        Recipient         `json:"recipients"`
+	From              Address           `json:"from"`
+	Attachment        []Attachment      `json:"attachment"`
+	Metadata          map[string]string `json:"metadata"`
+	OptionsAttributes OptionsAttributes `json:"optionsAttributes"`
 }
 
 type Recipient struct {
-	Address []Address
+	Address Address `json:"address"`
 }
 
 type Address struct {
-	Email string
-	Name  string
+	Email string `json:"email"`
+	Name  string `json:"name"`
 }
 
 type Attachment struct {
-	Type     string
-	Filename string
-	Content  string
+	Type     string `json:"type"`
+	Filename string `json:"filename"`
+	Content  string `json:"content"`
+}
+
+type OptionsAttributes struct {
+	ClickTracking bool `json:"clickTracking"`
+	OpenTracking  bool `json:"openTracking"`
 }
 
 func (l *Layang) NewMessage(subject, text, html string, from Address, recipient Recipient) *Message {
@@ -48,31 +56,29 @@ func (l *Message) IsValid() error {
 	if l.Text == "" && l.Html == "" {
 		return errors.New("text or html is empty")
 	}
-	if len(l.Recipients.Address) == 0 {
-		return errors.New("recipient must not 0")
-	}
 	if !IsEmail(l.From.Email) {
 		return errors.New(l.From.Email + " is not valid email address")
 	}
-	for _, to := range l.Recipients.Address {
-		if !IsEmail(to.Email) {
-			return errors.New(to.Email + " is not valid email address")
-		}
+	if !IsEmail(l.Recipients.Address.Email) {
+		return errors.New(l.Recipients.Address.Email + " is not valid email address")
 	}
-
-	return nil
-}
-
-func (l *Message) SetHtml(body string) error {
-	if !IsHTML(body) {
+	if !IsHTML(l.Html) {
+		fmt.Println("not valid")
 		return errors.New("not valid html")
+	} else {
+		fmt.Println("valid")
 	}
-
-	l.Html = body
-
 	return nil
 }
 
 func (l *Message) SetAttachment(attachment []Attachment) {
 	l.Attachment = attachment
+}
+
+func (l *Message) SetMetadata(metadata map[string]string) {
+	l.Metadata = metadata
+}
+
+func (l *Message) setOptionsAttributes(attributes OptionsAttributes) {
+	l.OptionsAttributes = attributes
 }

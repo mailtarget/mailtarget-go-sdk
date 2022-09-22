@@ -1,12 +1,11 @@
 package layang
 
 import (
-	"fmt"
+	"errors"
 )
 
 type SuccessResponse struct {
-	Message string `json:"message"`
-	Id      string `json:"id"`
+	Id string `json:"id"`
 }
 
 type ErrorResponse struct {
@@ -17,21 +16,21 @@ type ErrorResponse struct {
 func (l *Layang) sendMessage(message *Message) (*SuccessResponse, *ErrorResponse, error) {
 	resp, err := l.resty.R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Api-Key", l.apiKey).
+		SetHeader("Authorization", "Bearer "+l.apiKey).
+		SetHeader("Accept", "application/json").
 		SetBody(message).
+		EnableTrace().
 		SetResult(SuccessResponse{}).
 		SetError(ErrorResponse{}).
-		Post(l.apiBase + "/" + l.apiVersion + "/send")
+		Post(l.apiBase + "/" + l.apiVersion + "/layang/transmissions")
+
 	if resp.IsSuccess() {
-		println("success")
-		fmt.Printf("%+v", resp.Result())
 		return resp.Result().(*SuccessResponse), nil, err
 	}
 	if resp.IsError() {
-		println("error")
 		errorResponse := resp.Error().(*ErrorResponse)
 		errorResponse.Status = resp.StatusCode()
-		return nil, errorResponse, err
+		return nil, errorResponse, errors.New(resp.String())
 	}
 
 	return nil, nil, err

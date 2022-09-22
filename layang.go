@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	APIBase = "https://smtpdevconf.mtarget.id/v1/layang/transmissions"
+	APIBase = "https://smtpdevconf.mtarget.id"
 )
 
 type Layang struct {
