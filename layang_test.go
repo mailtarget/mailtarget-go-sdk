@@ -23,7 +23,7 @@ func TestSend_Success(t *testing.T) {
 
 	//setup layang
 	layang := NewLayang(privateAPIKey)
-	message := layang.NewMessage(subject, body, html, sender, recipient)
+	message := layang.NewMessage(subject, body, html, sender, to)
 	message.SetAttachment(attachments)
 
 	//mock http
@@ -45,7 +45,7 @@ func TestSend_ErrorLayangInvalid(t *testing.T) {
 
 	//setup layang
 	layang := NewLayang("")
-	message := layang.NewMessage(subject, body, html, sender, recipient)
+	message := layang.NewMessage(subject, body, html, sender, to)
 
 	//mock http
 	httpmock.ActivateNonDefault(layang.resty.GetClient())
@@ -66,7 +66,7 @@ func TestSend_ErrorMessageInvalid(t *testing.T) {
 
 	//setup layang
 	layang := NewLayang(privateAPIKey)
-	message := layang.NewMessage(subject, body, html, wrongSender, recipient)
+	message := layang.NewMessage(subject, body, html, wrongSender, to)
 
 	//mock http
 	httpmock.ActivateNonDefault(layang.resty.GetClient())

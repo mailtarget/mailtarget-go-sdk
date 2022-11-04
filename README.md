@@ -36,11 +36,17 @@ text := "Hello from Layang Go!"
 // html
 html := `<p>My fantastic HTML content.<br><br><b>SparkPost</b> <img src=\"cid:AnImage.png\"></p>`
 
-// recipient
-recipient := layang.Recipient{Address: layang.Address{
-    Email: "recipient@example.com",
-    Name:  "Recipient",
-}}
+// to
+var to = []Address{
+	{
+		Email: "to@example.com",
+		Name:  "To",
+	},
+	{
+		Email: "to2@example.com",
+		Name:  "To2",
+	},
+}
 
 // attachment
 attachment := Attachment{
@@ -139,7 +145,7 @@ func main() {
 	message.SetAttachment(attachments)
 	message.SetMetadata(metadata)
 	message.setOptionsAttributes(optionsAttributes)
-	
+
 	// Send the message
 	successResponse, errorResponse, err := l.Send(message)
 	if err != nil {

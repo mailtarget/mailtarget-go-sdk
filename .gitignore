@@ -4,3 +4,4 @@ benchmark
 cover.html
 cover.out
 Makefile
+.DS_Store

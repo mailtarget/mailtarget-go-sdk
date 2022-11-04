@@ -13,14 +13,29 @@ var wrongSender = Address{
 }
 var subject = "Fancy subject!"
 var body = "Hello from Layang Go!"
-var recipient = Recipient{Address: Address{
-	Email: "recipient@example.com",
-	Name:  "Recipient",
-}}
-var wrongRecipient = Recipient{Address: Address{
-	Email: "wrongrecipient.com",
-	Name:  "Recipient",
-}}
+
+var to = []Address{
+	{
+		Email: "to@example.com",
+		Name:  "To",
+	},
+	{
+		Email: "to2@example.com",
+		Name:  "To2",
+	},
+}
+
+var wrongTo = []Address{
+	{
+		Email: "wrongrecipient.com",
+		Name:  "To",
+	},
+	{
+		Email: "wrongrecipient2.com",
+		Name:  "To2",
+	},
+}
+
 var html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -198,9 +213,9 @@ var errorResponse = ErrorResponse{
 	Status: 400,
 }
 var attachment = Attachment{
-	Type:     "image/png",
+	MimeType:     "image/png",
 	Filename: "AnImage.png",
-	Content:  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAXxJREFUOBFjvJVg84P5718WBjLAX2bmPyxMf/+xMDH8YyZDPwPDXwYGJkIaOXTNGdiUtHAqI2jA/18/GUQzGsg3gMfKg4FVQo6BiYcPqyF4XcChaczA4+DP8P//f4b/P3+SZgAzvxCDSGYjAyMjI8PvZw+AoYXdLuyiQLtE0uoZWAREwLb+fnKXQTipkngXcJu7MnACQx8G2FX1GHgs3bDGBlYX8HlFM/z9+JbhzewWhmf1CQyfti9j+PfzBwO/ZxTMTDiNmQKBfmZX1GB42V/K8P38YbDCX/dvMDAwMzPwuYbBNcIYmC4AhfjvXwx/376AqQHTf96+ZPj34xuKGIiDaQBQ8PPBTQwCoZkMjJzcYA3MgqIMAr7xDJ/3rAHzkQnGO7FWf5gZ/qLmBSZmBoHgNAZee1+Gf18/MzCyczJ83LyQ4fPetch6Gf4xMP3FbgBMGdAgJqAr/n37zABMTTBROA0ygAWUJUG5Civ4B8xwX78CpbD6FJiHmf4AAFicbTMTr5jAAAAAAElFTkSuQmCC",
+	Value:  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAXxJREFUOBFjvJVg84P5718WBjLAX2bmPyxMf/+xMDH8YyZDPwPDXwYGJkIaOXTNGdiUtHAqI2jA/18/GUQzGsg3gMfKg4FVQo6BiYcPqyF4XcChaczA4+DP8P//f4b/P3+SZgAzvxCDSGYjAyMjI8PvZw+AoYXdLuyiQLtE0uoZWAREwLb+fnKXQTipkngXcJu7MnACQx8G2FX1GHgs3bDGBlYX8HlFM/z9+JbhzewWhmf1CQyfti9j+PfzBwO/ZxTMTDiNmQKBfmZX1GB42V/K8P38YbDCX/dvMDAwMzPwuYbBNcIYmC4AhfjvXwx/376AqQHTf96+ZPj34xuKGIiDaQBQ8PPBTQwCoZkMjJzcYA3MgqIMAr7xDJ/3rAHzkQnGO7FWf5gZ/qLmBSZmBoHgNAZee1+Gf18/MzCyczJ83LyQ4fPetch6Gf4xMP3FbgBMGdAgJqAr/n37zABMTTBROA0ygAWUJUG5Civ4B8xwX78CpbD6FJiHmf4AAFicbTMTr5jAAAAAAElFTkSuQmCC",
 }
 var attachments = []Attachment{
 	attachment,
@@ -209,4 +224,11 @@ var metadata = map[string]string{"key1": "value1", "key2": "value2"}
 var optionsAttributes = OptionsAttributes{
 	ClickTracking: true,
 	OpenTracking:  true,
+}
+
+var headers = []Header{
+	{
+		Name:  "some header",
+		Value: "some value",
+	},
 }
