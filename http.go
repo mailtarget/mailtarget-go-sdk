@@ -9,8 +9,10 @@ type SuccessResponse struct {
 }
 
 type ErrorResponse struct {
-	Error  string `json:"error"`
-	Status int    `json:"status"`
+	Error   string `json:"error"`
+	Status  int    `json:"status"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 func (l *Layang) sendMessage(message *Message) (*SuccessResponse, *ErrorResponse, error) {
