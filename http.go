@@ -5,7 +5,7 @@ import (
 )
 
 type SuccessResponse struct {
-	Id string `json:"id"`
+	TransmissionId string `json:"transmissionId"`
 }
 
 type ErrorResponse struct {
