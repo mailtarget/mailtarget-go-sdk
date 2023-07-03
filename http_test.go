@@ -18,7 +18,7 @@ func TestSendMessage_Success(t *testing.T) {
 	//mock http
 	httpmock.ActivateNonDefault(layang.resty.GetClient())
 	defer httpmock.DeactivateAndReset()
-	httpmock.RegisterResponder("POST", "https://smtpdevconf.mtarget.id/v1/layang/transmissions",
+	httpmock.RegisterResponder("POST", "https://apiconfig.mailtarget.co/v1/layang/transmissions",
 		func(req *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, successResponse)
 		})
@@ -43,7 +43,7 @@ func TestSendMessage_Error(t *testing.T) {
 	//mock http
 	httpmock.ActivateNonDefault(layang.resty.GetClient())
 	defer httpmock.DeactivateAndReset()
-	httpmock.RegisterResponder("POST", "https://smtpdevconf.mtarget.id/v1/layang/transmissions",
+	httpmock.RegisterResponder("POST", "https://apiconfig.mailtarget.co/v1/layang/transmissions",
 		func(req *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(400, errorResponse)
 		})

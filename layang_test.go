@@ -1,6 +1,7 @@
 package layang
 
 import (
+	"fmt"
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -29,7 +30,7 @@ func TestSend_Success(t *testing.T) {
 	//mock http
 	httpmock.ActivateNonDefault(layang.resty.GetClient())
 	defer httpmock.DeactivateAndReset()
-	httpmock.RegisterResponder("POST", "https://smtpdevconf.mtarget.id/v1/layang/transmissions",
+	httpmock.RegisterResponder("POST", "https://apiconfig.mailtarget.co/v1/layang/transmissions",
 		func(req *http.Request) (*http.Response, error) {
 			return httpmock.NewJsonResponse(200, successResponse)
 		})
@@ -81,4 +82,32 @@ func TestSend_ErrorMessageInvalid(t *testing.T) {
 
 	//check
 	assert.Error(t, err)
+}
+
+func TestLayang_Send(t *testing.T) {
+	var subject = "Hello from Mailtarget"
+	var body = "Congratulation, you just sent email with Mailtarget. You are truly awesome!"
+	var html = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF - 8\"><title>Hello from Mailtarget</title></head><body><p>Congratulation, you just sent email with Mailtarget. You are truly awesome!</p></body></html>"
+	var sender = Address{
+		Email: "default@sandbox.mailtarget.co",
+		Name:  "MailTarget Sandbox",
+	}
+	var to = []Address{
+		{
+			Email: "penguinoflostatlantica@gmail.com",
+			Name:  "",
+		},
+	}
+
+	//setup layang
+	layang := NewLayang("8U1UyCCo5GlG6KJAIR5Ebzsj")
+	message := layang.NewMessage(subject, body, html, sender, to)
+
+	//send
+	successResponseActual, errorResponseActual, err := layang.Send(message)
+	if err != nil {
+		println(err.Error())
+	}
+	fmt.Println("Success Response ", successResponseActual)
+	fmt.Println("Error Response ", errorResponseActual)
 }
