@@ -34,7 +34,7 @@ subject := "Fancy subject!"
 text := "Hello from Layang Go!"
 
 // html
-html := `<p>My fantastic HTML content.<br><br><b>SparkPost</b> <img src=\"cid:AnImage.png\"></p>`
+html := `<p>My fantastic HTML content.<br><br><b>MailTarget</b> <img src=\"cid:AnImage.png\"></p>`
 
 // to
 var to = []Address{
@@ -121,7 +121,7 @@ func main() {
 	}
 	subject := "Fancy subject!"
 	body := "Hello from Layang Go!"
-	html := `<p>My fantastic HTML content.<br><br><b>SparkPost</b> <img src=\"cid:AnImage.png\"></p>`
+	html := `<p>My fantastic HTML content.<br><br><b>MailTarget</b> <img src=\"cid:AnImage.png\"></p>`
 	recipient := layang.Recipient{Address: layang.Address{
 		Email: "recipient@example.com",
 		Name:  "Recipient",
