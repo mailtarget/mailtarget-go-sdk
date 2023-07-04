@@ -105,7 +105,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/mailtarget/layang-sdk-go"
+	"github.com/mailtarget/mailtarget-go-sdk"
 	"log"
 )
 
