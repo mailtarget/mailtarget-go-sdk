@@ -2,7 +2,7 @@ package layang
 
 import "github.com/google/uuid"
 
-var privateAPIKey = "wnbj8XdJeeZ7Hraks0bU6tcK"
+var privateAPIKey = "API_KEY"
 var sender = Address{
 	Email: "sender@mtarget.co",
 	Name:  "Sender",

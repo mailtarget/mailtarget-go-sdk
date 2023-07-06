@@ -1,4 +1,4 @@
-module github.com/mailtarget/layang-sdk-go
+module github.com/mailtarget/mailtarget-go-sdk
 
 go 1.17
 
