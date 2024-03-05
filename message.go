@@ -18,6 +18,8 @@ type Message struct {
 	Attachment        []Attachment      `json:"attachment"`
 	Metadata          map[string]string `json:"metadata"`
 	OptionsAttributes OptionsAttributes `json:"optionsAttributes"`
+	TemplateId        string            `json:"templateId"`
+	SubstitutionData  map[string]string `json:"substitutionData"`
 }
 
 type Recipient struct {
@@ -104,19 +106,19 @@ func (l *Message) IsValid() error {
 	return nil
 }
 
-func (l *Message) SetReplyTo(replyTo []Address){
+func (l *Message) SetReplyTo(replyTo []Address) {
 	l.ReplyTo = replyTo
 }
 
-func (l *Message) SetCC(cc []Address)  {
+func (l *Message) SetCC(cc []Address) {
 	l.Cc = cc
 }
 
-func (l *Message) SetBCC(bcc []Address)  {
+func (l *Message) SetBCC(bcc []Address) {
 	l.Bcc = bcc
 }
 
-func (l *Message) SetHeaders(headers []Header)  {
+func (l *Message) SetHeaders(headers []Header) {
 	l.Headers = headers
 }
 
@@ -128,6 +130,14 @@ func (l *Message) SetMetadata(metadata map[string]string) {
 	l.Metadata = metadata
 }
 
-func (l *Message) setOptionsAttributes(attributes OptionsAttributes) {
+func (l *Message) SetOptionsAttributes(attributes OptionsAttributes) {
 	l.OptionsAttributes = attributes
+}
+
+func (l *Message) SetTemplateId(templateId string) {
+	l.TemplateId = templateId
+}
+
+func (l *Message) SetSubstitutionData(data map[string]string) {
+	l.SubstitutionData = data
 }
