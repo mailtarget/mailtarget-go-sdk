@@ -2,7 +2,6 @@ package layang
 
 import (
 	"errors"
-	"fmt"
 )
 
 type Message struct {
@@ -15,7 +14,7 @@ type Message struct {
 	BodyText          string            `json:"bodyText"`
 	BodyHtml          string            `json:"bodyHtml"`
 	Headers           []Header          `json:"headers"`
-	Attachment        []Attachment      `json:"attachment"`
+	Attachment        []Attachment      `json:"attachments"`
 	Metadata          map[string]string `json:"metadata"`
 	OptionsAttributes OptionsAttributes `json:"optionsAttributes"`
 }
@@ -95,11 +94,8 @@ func (l *Message) IsValid() error {
 		}
 	}
 
-	if !IsHTML(l.BodyHtml) {
-		fmt.Println("not valid")
+	if l.BodyHtml != "" && !IsHTML(l.BodyHtml) {
 		return errors.New("not valid html")
-	} else {
-		fmt.Println("valid")
 	}
 	return nil
 }
@@ -128,6 +124,6 @@ func (l *Message) SetMetadata(metadata map[string]string) {
 	l.Metadata = metadata
 }
 
-func (l *Message) setOptionsAttributes(attributes OptionsAttributes) {
+func (l *Message) SetOptionsAttributes(attributes OptionsAttributes) {
 	l.OptionsAttributes = attributes
 }

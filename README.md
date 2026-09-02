@@ -86,7 +86,7 @@ message.SetMetadata(metadata)
 
 ### Set Options Attribute
 ```go
-message.setOptionsAttributes(optionsAttributes)
+message.SetOptionsAttributes(optionsAttributes)
 ```
 
 ### Sending Message
@@ -144,7 +144,7 @@ func main() {
 	message := l.NewMessage(subject, body, html, sender, recipient)
 	message.SetAttachment(attachments)
 	message.SetMetadata(metadata)
-	message.setOptionsAttributes(optionsAttributes)
+	message.SetOptionsAttributes(optionsAttributes)
 
 	// Send the message
 	successResponse, errorResponse, err := l.Send(message)

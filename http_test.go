@@ -13,7 +13,7 @@ func TestSendMessage_Success(t *testing.T) {
 	layang := NewLayang(privateAPIKey)
 	message := layang.NewMessage(subject, body, html, sender, to)
 	message.SetMetadata(metadata)
-	message.setOptionsAttributes(optionsAttributes)
+	message.SetOptionsAttributes(optionsAttributes)
 
 	//mock http
 	httpmock.ActivateNonDefault(layang.resty.GetClient())
