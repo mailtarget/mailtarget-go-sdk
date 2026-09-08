@@ -5,7 +5,7 @@ The Layang Golang SDK enable Golang developer to work with Layang API efficientl
 ## Getting Started
 
 ### Requirements
-To run SDK, you will need go1.17.5+.
+To run SDK, you will need go1.25+.
 
 ### Authentication
 When you Sign Up, you can generate API Key in Layang Dashboard. To view your API Key in the Layang dashboard, click on Configuration on the left-hand navbar in the Layang dashboard and then API Key.
@@ -155,3 +155,142 @@ func main() {
 	fmt.Printf("Succcess Response: %+v Error Response: %+v\n", successResponse, errorResponse)
 }
 ```
+
+## Mailtarget Open API
+
+Beyond sending email, the SDK can reach the Mailtarget Open API (contacts, analytics and more).
+That API uses a **second credential**, the Open API secret key, which is issued on request through
+your account manager — unlike the Mailtarget API key, you cannot generate it yourself from the
+dashboard.
+
+The two credentials are separate on purpose:
+
+| | Mailtarget API key | Open API secret key |
+|---|---|---|
+| Required | yes | no, only for Open API calls |
+| Obtained from | your dashboard | request to Mailtarget admin (CRM) |
+| Used for | sending email | Open API resources |
+
+Sending email always uses the Mailtarget API key and is never routed through the Open API, so a
+client built without an Open API secret key sends email exactly as before.
+
+Open API resources live in the `openapi` subpackage. `MailtargetClient` embeds it, so its resources
+read the same way as in the Java and Python SDKs — directly off `client`:
+
+```go
+import (
+    "github.com/mailtarget/mailtarget-go-sdk"
+    "github.com/mailtarget/mailtarget-go-sdk/openapi"
+)
+
+client := layang.NewMailtargetClient(
+    privateAPIKey,
+    layang.WithOpenAPISecretKey(openAPISecretKey),
+)
+
+// Sending still works the same way, through the Transmission API.
+successResponse, errorResponse, err := client.Send(message)
+
+// Open API resources.
+page, err := client.Contacts.List(nil)
+```
+
+Without the secret key, every Open API call fails immediately with an `*openapi.ConfigError` and no
+HTTP request is made:
+
+```go
+client := layang.NewMailtargetClient(privateAPIKey) // no Open API secret key
+
+_, err := client.Contacts.List(nil)
+
+var configErr *openapi.ConfigError
+if errors.As(err, &configErr) {
+    // "open API secret key is required to call Contacts.List — pass ..."
+}
+```
+
+Use `client.HasOpenAPIAccess()` to branch on availability instead of handling the error, or
+`client.SetOpenAPISecretKey(...)` to supply the key later.
+
+If you only need the Open API and never send email, use the subpackage on its own:
+
+```go
+oa := openapi.New(openapi.WithSecretKey(openAPISecretKey))
+page, err := oa.Contacts.List(nil)
+```
+
+### Contacts
+
+```go
+// List returns one page plus its pagination metadata.
+page, err := client.Contacts.List(&openapi.ListContactsParams{
+    Page: 1, PerPage: 20, Search: "@mtarget.co",
+})
+fmt.Println(page.Items, page.Meta.Total)
+
+contact, err := client.Contacts.Get("contact-id")
+contact, err = client.Contacts.GetByEmail("recipient@example.com")
+
+contact, err = client.Contacts.Create(&openapi.CreateContactRequest{
+    Email:     "recipient@example.com",
+    Firstname: "Sarah",
+    Labels:    []string{"vip"},
+})
+
+contact, err = client.Contacts.Update("contact-id", &openapi.UpdateContactRequest{
+    Note: "renewed",
+})
+
+err = client.Contacts.Delete("contact-id")
+
+total, err := client.Contacts.Count(nil)
+```
+
+### Analytics
+
+```go
+summary, err := client.Analytics.Summary(&openapi.AnalyticsSummaryParams{
+    From: "2026-08-01",
+    To:   "2026-08-31",
+})
+
+breakdown, err := client.Analytics.SummaryBreakdown(&openapi.AnalyticsSummaryParams{
+    From: "2026-08-01", To: "2026-08-31", GroupBy: "sender",
+})
+
+detail, err := client.Analytics.Transmission("transmission-id")
+events, err := client.Analytics.TransmissionEvents("transmission-id")
+```
+
+### Errors and timeouts
+
+Open API failures come back as `*openapi.Error`, carrying the HTTP status plus the API's own
+`error` code and `message`:
+
+```go
+var apiErr *openapi.Error
+if errors.As(err, &apiErr) {
+    log.Printf("status=%d code=%s message=%s", apiErr.StatusCode, apiErr.Code, apiErr.Message)
+}
+```
+
+Open API requests time out after 30 seconds by default; override with
+`layang.WithOpenAPITimeout(d)`.
+
+### Available resources
+
+Currently implemented: **Contacts**, **Analytics**. The remaining Open API resources (API Keys,
+Campaigns, Senders, Sending Domains, Labels, Settings, Sub Accounts and the Open API's own
+transmissions endpoint) are being rolled out incrementally.
+
+### Adding a new Open API resource
+
+The layout is designed so a new resource stays a local change:
+
+1. Add `openapi/<resource>.go` with its models and a `<Resource>Service` whose methods call the
+   shared helpers (`object`, `objects`, `paged`, `bare`) or `c.do` directly.
+2. Add one field for the service on `openapi.Client` and wire it in `New`.
+3. Add `openapi/<resource>_test.go`.
+
+Nothing in the root package changes, and the secret key guard applies automatically because every
+call goes through `Client.do`.

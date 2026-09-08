@@ -1,6 +1,6 @@
 module github.com/mailtarget/mailtarget-go-sdk
 
-go 1.17
+go 1.25
 
 require (
 	github.com/go-resty/resty/v2 v2.7.0
