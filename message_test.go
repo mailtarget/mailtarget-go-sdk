@@ -25,6 +25,13 @@ func TestMessage_IsValid_ErrorMessageIsEmpty2(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMessage_IsValid_SuccessTextOnly(t *testing.T) {
+	layang := NewLayang(privateAPIKey)
+	message := layang.NewMessage(subject, body, "", sender, to)
+	err := message.IsValid()
+	assert.NoErrorf(t, err, "")
+}
+
 func TestMessage_IsValid_ErrorTextIsEmpty(t *testing.T) {
 	layang := NewLayang(privateAPIKey)
 	message := layang.NewMessage(subject, "", "", sender, to)
