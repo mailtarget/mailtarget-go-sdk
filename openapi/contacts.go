@@ -1,9 +1,11 @@
 package openapi
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // ContactsService exposes the contact endpoints.
@@ -79,11 +81,12 @@ type CreateContactRequest struct {
 	UnsubscribeReason string           `json:"unsubscribeReason,omitempty"`
 }
 
-// UpdateContactRequest is the payload of Update. Only the fields you set are
-// changed.
+// UpdateContactRequest is the payload of Update. Email, Firstname and Labels
+// are required by the API; the other fields are sent only when set.
 type UpdateContactRequest struct {
-	Email       string         `json:"email,omitempty"`
-	Firstname   string         `json:"firstname,omitempty"`
+	Email       string         `json:"email"`
+	Firstname   string         `json:"firstname"`
+	Labels      []string       `json:"labels"`
 	Lastname    string         `json:"lastname,omitempty"`
 	Phone       string         `json:"phone,omitempty"`
 	Company     string         `json:"company,omitempty"`
@@ -92,8 +95,15 @@ type UpdateContactRequest struct {
 	Gender      string         `json:"gender,omitempty"`
 	DayOfBirth  string         `json:"dayOfBirth,omitempty"`
 	Note        string         `json:"note,omitempty"`
-	Labels      []string       `json:"labels,omitempty"`
 	CustomField map[string]any `json:"customField,omitempty"`
+}
+
+func (r *UpdateContactRequest) validate() error {
+	if r == nil || strings.TrimSpace(r.Email) == "" ||
+		strings.TrimSpace(r.Firstname) == "" || len(r.Labels) == 0 {
+		return errors.New("contacts update requires Email, Firstname and at least one Label")
+	}
+	return nil
 }
 
 // ListContactsParams holds the optional query parameters of List.
@@ -168,6 +178,9 @@ func (s *ContactsService) Create(req *CreateContactRequest) (*Contact, error) {
 
 // Update changes an existing contact.
 func (s *ContactsService) Update(id string, req *UpdateContactRequest) (*Contact, error) {
+	if err := req.validate(); err != nil {
+		return nil, err
+	}
 	return object[Contact](s.c, request{
 		capability: "Contacts.Update",
 		method:     http.MethodPut,
@@ -183,6 +196,26 @@ func (s *ContactsService) Delete(id string) error {
 		method:     http.MethodDelete,
 		path:       "/contacts/" + url.PathEscape(id),
 	})
+}
+
+// Export returns one page of contacts as CSV, using the same filters as List.
+// Custom field keys are flattened into extra columns. Paging past the last
+// contact yields an *Error with StatusCode 404, which marks the end of the
+// export.
+func (s *ContactsService) Export(params *ListContactsParams) ([]byte, error) {
+	var csv []byte
+	err := s.c.do(request{
+		capability: "Contacts.Export",
+		method:     http.MethodGet,
+		path:       "/contacts/export",
+		query:      params.values(),
+		accept:     "text/csv",
+		rawBytes:   &csv,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return csv, nil
 }
 
 // Count returns how many contacts match filter. Pass nil to count everything.

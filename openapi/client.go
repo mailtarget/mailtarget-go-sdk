@@ -51,6 +51,11 @@ type Client struct {
 	Labels         *LabelsService
 	Settings       *SettingsService
 	SubAccounts    *SubAccountsService
+	Segments       *SegmentsService
+	Suppressions   *SuppressionsService
+	Webhooks       *WebhooksService
+	WebhookEvents  *WebhookEventsService
+	Usage          *UsageService
 
 	// Transmissions is the Open API's own send endpoint. Sending through
 	// layang.Layang is preferred: it needs only the Mailtarget API key, while
@@ -129,6 +134,11 @@ func New(opts ...Option) *Client {
 	c.Labels = &LabelsService{c: c}
 	c.Settings = &SettingsService{c: c}
 	c.SubAccounts = &SubAccountsService{c: c}
+	c.Segments = &SegmentsService{c: c}
+	c.Suppressions = &SuppressionsService{c: c}
+	c.Webhooks = &WebhooksService{c: c}
+	c.WebhookEvents = &WebhookEventsService{c: c}
+	c.Usage = &UsageService{c: c}
 	c.Transmissions = &TransmissionsService{c: c}
 	return c
 }

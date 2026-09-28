@@ -114,12 +114,67 @@ func TestContactsService_Update(t *testing.T) {
 			return httpmock.NewStringResponse(200, `{"data":{"id":"abc123","note":"vip"}}`), nil
 		})
 
-	contact, err := c.Contacts.Update("abc123", &UpdateContactRequest{Note: "vip"})
+	contact, err := c.Contacts.Update("abc123", &UpdateContactRequest{
+		Email: "a@b.co", Firstname: "A", Labels: []string{"vip"}, Note: "vip",
+	})
 
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodPut, gotMethod)
-	assert.JSONEq(t, `{"note":"vip"}`, gotBody)
+	assert.JSONEq(t, `{"email":"a@b.co","firstname":"A","labels":["vip"],"note":"vip"}`, gotBody)
 	assert.Equal(t, "vip", contact.Note)
+}
+
+// email, firstname and labels are required by the API, so the SDK refuses the
+// call locally.
+func TestContactsService_UpdateRequiresFields(t *testing.T) {
+	c := withSecret(t)
+
+	requests := map[string]*UpdateContactRequest{
+		"nil":          nil,
+		"no email":     {Firstname: "A", Labels: []string{"vip"}},
+		"no firstname": {Email: "a@b.co", Labels: []string{"vip"}},
+		"no labels":    {Email: "a@b.co", Firstname: "A"},
+	}
+	for name, req := range requests {
+		_, err := c.Contacts.Update("abc123", req)
+		assert.ErrorContains(t, err, "Email, Firstname and at least one Label", name)
+	}
+	assert.Equal(t, 0, httpmock.GetTotalCallCount())
+}
+
+func TestContactsService_Export(t *testing.T) {
+	c := withSecret(t)
+
+	var gotQuery, gotAccept string
+	httpmock.RegisterResponder("GET", testBaseURL+"/v1/contacts/export",
+		func(req *http.Request) (*http.Response, error) {
+			gotQuery = req.URL.Query().Encode()
+			gotAccept = req.Header.Get("Accept")
+			resp := httpmock.NewStringResponse(200, "email,name\na@b.co,A\n")
+			resp.Header.Set("Content-Type", "text/csv; charset=utf-8")
+			return resp, nil
+		})
+
+	csv, err := c.Contacts.Export(&ListContactsParams{Page: 2, PerPage: 50, Search: "b.co"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "page=2&perPage=50&search=b.co", gotQuery)
+	assert.Equal(t, "text/csv", gotAccept)
+	assert.Equal(t, "email,name\na@b.co,A\n", string(csv))
+}
+
+// Paging past the last contact is reported as a 404, which callers use to stop.
+func TestContactsService_ExportPastLastPage(t *testing.T) {
+	c := withSecret(t)
+	httpmock.RegisterResponder("GET", testBaseURL+"/v1/contacts/export",
+		httpmock.NewStringResponder(404, `{"error":"not_found","message":"no contacts found for page 9"}`))
+
+	csv, err := c.Contacts.Export(&ListContactsParams{Page: 9})
+
+	assert.Nil(t, csv)
+	var apiErr *Error
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestContactsService_Delete(t *testing.T) {
@@ -149,15 +204,17 @@ func TestContactsService_Count(t *testing.T) {
 
 func TestContactsService_AllMethodsGuardedWithoutSecretKey(t *testing.T) {
 	c := newTestClient(t)
+	update := &UpdateContactRequest{Email: "a@b.co", Firstname: "A", Labels: []string{"vip"}}
 
 	calls := map[string]func() error{
 		"List":       func() error { _, err := c.Contacts.List(nil); return err },
 		"Get":        func() error { _, err := c.Contacts.Get("1"); return err },
 		"GetByEmail": func() error { _, err := c.Contacts.GetByEmail("a@b.co"); return err },
 		"Create":     func() error { _, err := c.Contacts.Create(&CreateContactRequest{}); return err },
-		"Update":     func() error { _, err := c.Contacts.Update("1", &UpdateContactRequest{}); return err },
+		"Update":     func() error { _, err := c.Contacts.Update("1", update); return err },
 		"Delete":     func() error { return c.Contacts.Delete("1") },
 		"Count":      func() error { _, err := c.Contacts.Count(nil); return err },
+		"Export":     func() error { _, err := c.Contacts.Export(nil); return err },
 	}
 
 	for name, call := range calls {

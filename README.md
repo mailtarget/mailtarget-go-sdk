@@ -237,13 +237,44 @@ contact, err = client.Contacts.Create(&openapi.CreateContactRequest{
     Labels:    []string{"vip"},
 })
 
+// Email, Firstname and Labels are required on update.
 contact, err = client.Contacts.Update("contact-id", &openapi.UpdateContactRequest{
-    Note: "renewed",
+    Email:     "recipient@example.com",
+    Firstname: "Sarah",
+    Labels:    []string{"vip"},
+    Note:      "renewed",
 })
 
 err = client.Contacts.Delete("contact-id")
 
 total, err := client.Contacts.Count(nil)
+
+// Export returns one page as CSV. Paging past the last contact returns an
+// *openapi.Error with StatusCode 404, which marks the end of the export.
+csv, err := client.Contacts.Export(&openapi.ListContactsParams{Page: 1, PerPage: 100})
+```
+
+### Segments
+
+Segments are saved, named contact filters. `Filters` uses the same structure as the filters body of
+`Contacts.Count`.
+
+```go
+page, err := client.Segments.List(&openapi.ListSegmentsParams{Search: "vip", Sort: "-count"})
+segment, err := client.Segments.Get("segment-id")
+
+// Filters is required; pass an empty slice to match every contact.
+segment, err = client.Segments.Create(&openapi.CreateSegmentRequest{
+    Name:    "VIP buyers",
+    Filters: []map[string]any{{"field": "labels", "operator": "in", "value": []string{"vip"}}},
+})
+
+// Omitted fields keep their current value.
+segment, err = client.Segments.Update("segment-id", &openapi.UpdateSegmentRequest{Name: "Top buyers"})
+err = client.Segments.Delete("segment-id")
+
+// Live count of the active contacts a campaign to this segment would reach.
+count, err := client.Segments.RecipientsCount("segment-id")
 ```
 
 ### Analytics
@@ -288,7 +319,10 @@ key, err := client.APIKeys.Get(7)
 key, err = client.APIKeys.Create(&openapi.CreateAPIKeyRequest{
     Name: "ci", PermissionIDs: []int{1, 2},
 })
-key, err = client.APIKeys.Update(7, &openapi.UpdateAPIKeyRequest{Name: "renamed"})
+// PermissionIDs is required and must be non-empty on update.
+key, err = client.APIKeys.Update(7, &openapi.UpdateAPIKeyRequest{
+    Name: "renamed", PermissionIDs: []int{1, 2},
+})
 err = client.APIKeys.Delete(7)
 ```
 
@@ -345,14 +379,69 @@ label, err = client.Labels.Rename("newsletter", "monthly-newsletter")
 err = client.Labels.Delete("vip", "cold-lead")
 ```
 
-### Settings and sub-accounts
+### Suppressions
+
+Suppressed addresses no longer receive email.
+
+```go
+page, err := client.Suppressions.List(&openapi.ListSuppressionsParams{
+    Source: "List Unsubscribe,Link Unsubscribe", // comma separated to match any of several
+})
+bounces, err := client.Suppressions.Bounces(nil)
+unsubscribes, err := client.Suppressions.Unsubscribes(nil)
+
+// One address can be suppressed per sub-account plus account-wide, so this is a list.
+found, err := client.Suppressions.Lookup(&openapi.LookupSuppressionsParams{Email: "recipient@example.com"})
+
+// Email, Type and Source are required; Type and Source are free-form (max 255
+// characters). Leave SubAccountID zero to suppress account-wide.
+sup, err := client.Suppressions.Create(&openapi.CreateSuppressionRequest{
+    Email: "recipient@example.com", Type: "Non-transactional", Source: "Manual",
+})
+err = client.Suppressions.Delete(sup.ID)
+```
+
+### Webhooks
+
+```go
+// The catalog of event types; their IDs go into EventIDs.
+events, err := client.WebhookEvents.List(nil)
+event, err := client.WebhookEvents.Get(1)
+
+page, err := client.Webhooks.List(&openapi.ListWebhooksParams{Search: "crm"})
+hook, err := client.Webhooks.Get(5)
+
+hook, err = client.Webhooks.Create(&openapi.CreateWebhookRequest{
+    Name:             "crm",
+    TargetURL:        "https://crm.example.com/hook",
+    EventIDs:         []int{1, 2},
+    AuthenticationID: openapi.WebhookAuthBasic,
+    Username:         "bot",
+    Password:         "secret",
+})
+
+// Update replaces the whole configuration. Leave Password or IsActive nil to keep them.
+active := false
+hook, err = client.Webhooks.Update(5, &openapi.UpdateWebhookRequest{
+    Name: "crm", TargetURL: "https://crm.example.com/hook", EventIDs: []int{1}, IsActive: &active,
+})
+err = client.Webhooks.Delete(5)
+```
+
+### Settings, usage and sub-accounts
 
 ```go
 company, err := client.Settings.Company()
 profile, err := client.Settings.Profile()
 
+// Quota fields are 0 on plans without a fixed monthly quota; that does not block sending.
+usage, err := client.Usage.Get()
+
 // Note: this endpoint spells the page size "size", not "perPage".
 page, err := client.SubAccounts.List(&openapi.ListSubAccountsParams{Page: 1, Size: 25})
+sub, err := client.SubAccounts.Get(3)
+sub, err = client.SubAccounts.Create(&openapi.CreateSubAccountRequest{Name: "sales"})
+sub, err = client.SubAccounts.Update(3, &openapi.UpdateSubAccountRequest{Status: "Suspended"})
 ```
 
 ### Transmissions (Open API)
@@ -376,8 +465,9 @@ fmt.Println(result.TransmissionID)
 
 ### Available resources
 
-All Open API resources are implemented: **Contacts**, **Analytics**, **API Keys**, **Campaigns**,
-**Senders**, **Sending Domains**, **Labels**, **Settings**, **Sub Accounts** and **Transmissions**.
+All Open API resources are implemented: **Contacts**, **Segments**, **Analytics**, **API Keys**,
+**Campaigns**, **Senders**, **Sending Domains**, **Labels**, **Suppressions**, **Webhooks**,
+**Webhook Events**, **Settings**, **Usage**, **Sub Accounts** and **Transmissions**.
 
 ### Adding a new Open API resource
 

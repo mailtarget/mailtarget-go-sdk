@@ -80,12 +80,25 @@ func TestAPIKeysService_Update(t *testing.T) {
 			return httpmock.NewStringResponse(200, `{"data":{"id":7,"name":"renamed"}}`), nil
 		})
 
-	key, err := c.APIKeys.Update(7, &UpdateAPIKeyRequest{Name: "renamed"})
+	key, err := c.APIKeys.Update(7, &UpdateAPIKeyRequest{Name: "renamed", PermissionIDs: []int{1}})
 
 	require.NoError(t, err)
 	assert.Equal(t, http.MethodPut, gotMethod)
-	assert.JSONEq(t, `{"name":"renamed"}`, gotBody)
+	assert.JSONEq(t, `{"name":"renamed","permissionIds":[1]}`, gotBody)
 	assert.Equal(t, "renamed", key.Name)
+}
+
+// permissionIds is required and must be non-empty, so the SDK refuses the call
+// locally.
+func TestAPIKeysService_UpdateRequiresPermissionIDs(t *testing.T) {
+	c := withSecret(t)
+
+	_, errNil := c.APIKeys.Update(7, nil)
+	_, errEmpty := c.APIKeys.Update(7, &UpdateAPIKeyRequest{Name: "renamed", PermissionIDs: []int{}})
+
+	assert.ErrorContains(t, errNil, "PermissionID")
+	assert.ErrorContains(t, errEmpty, "PermissionID")
+	assert.Equal(t, 0, httpmock.GetTotalCallCount())
 }
 
 func TestAPIKeysService_Delete(t *testing.T) {
@@ -103,7 +116,7 @@ func TestAPIKeysService_AllMethodsGuardedWithoutSecretKey(t *testing.T) {
 		"List":   func() error { _, err := c.APIKeys.List(nil); return err },
 		"Get":    func() error { _, err := c.APIKeys.Get(1); return err },
 		"Create": func() error { _, err := c.APIKeys.Create(&CreateAPIKeyRequest{}); return err },
-		"Update": func() error { _, err := c.APIKeys.Update(1, &UpdateAPIKeyRequest{}); return err },
+		"Update": func() error { _, err := c.APIKeys.Update(1, &UpdateAPIKeyRequest{PermissionIDs: []int{1}}); return err },
 		"Delete": func() error { return c.APIKeys.Delete(1) },
 	}
 	for name, call := range calls {

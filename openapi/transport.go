@@ -25,6 +25,12 @@ type request struct {
 	// rawResult receives the whole response body instead of `data`, for the
 	// few endpoints that answer with a bare object such as {"count": N}.
 	rawResult any
+	// rawBytes receives the response body verbatim, for non-JSON endpoints
+	// such as the CSV contact export.
+	rawBytes *[]byte
+
+	// accept overrides the default "application/json" Accept header.
+	accept string
 }
 
 // do is the single path every Open API call takes. It enforces the secret key
@@ -41,10 +47,15 @@ func (c *Client) do(req request) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
+	accept := req.accept
+	if accept == "" {
+		accept = "application/json"
+	}
+
 	r := c.resty.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+c.secretKey).
-		SetHeader("Accept", "application/json")
+		SetHeader("Accept", accept)
 
 	if len(req.query) > 0 {
 		r.SetQueryParamsFromValues(req.query)
@@ -73,6 +84,10 @@ func (c *Client) do(req request) error {
 		return apiErr
 	}
 
+	if req.rawBytes != nil {
+		*req.rawBytes = body
+		return nil
+	}
 	if len(body) == 0 {
 		return nil
 	}

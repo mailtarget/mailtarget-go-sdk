@@ -1,6 +1,7 @@
 package openapi
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -54,12 +55,20 @@ type CreateAPIKeyRequest struct {
 	SubAccountID   int    `json:"subAccountId,omitempty"`
 }
 
-// UpdateAPIKeyRequest is the payload of Update. Only the fields you set change.
+// UpdateAPIKeyRequest is the payload of Update. PermissionIDs is required and
+// must be non-empty; the other fields change only when set.
 type UpdateAPIKeyRequest struct {
 	Name           string `json:"name,omitempty"`
-	PermissionIDs  []int  `json:"permissionIds,omitempty"`
+	PermissionIDs  []int  `json:"permissionIds"`
 	PermissionType string `json:"permissionType,omitempty"`
 	AllowedIP      string `json:"allowedIp,omitempty"`
+}
+
+func (r *UpdateAPIKeyRequest) validate() error {
+	if r == nil || len(r.PermissionIDs) == 0 {
+		return errors.New("api keys update requires at least one PermissionID")
+	}
+	return nil
 }
 
 // ListAPIKeysParams holds the optional query parameters of List.
@@ -129,6 +138,9 @@ func (s *APIKeysService) Create(req *CreateAPIKeyRequest) (*APIKeyDetail, error)
 
 // Update changes an existing API key.
 func (s *APIKeysService) Update(id int, req *UpdateAPIKeyRequest) (*APIKeyDetail, error) {
+	if err := req.validate(); err != nil {
+		return nil, err
+	}
 	return object[APIKeyDetail](s.c, request{
 		capability: "APIKeys.Update",
 		method:     http.MethodPut,
