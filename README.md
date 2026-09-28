@@ -257,7 +257,11 @@ csv, err := client.Contacts.Export(&openapi.ListContactsParams{Page: 1, PerPage:
 ### Segments
 
 Segments are saved, named contact filters. `Filters` uses the same structure as the filters body of
-`Contacts.Count`.
+`Contacts.Count`: each condition is `{"field", "type", "operator", "values"}`, with uppercase `type`
+(`TEXT`, `NUMBER`, `DATE`, `LIST`) and uppercase `operator` (`MATCH`, `CONTAIN`, `NOT_CONTAIN`,
+`CONTAIN_ANY`, `CONTAIN_ALL`, `NOT_CONTAIN_ANY`, `IS_EMPTY`, `GREATER_THAN`, `LESS_THAN`); `values` is
+always a slice. Conditions on different fields are ANDed together. The `IS_NOT_EMPTY` operator
+currently 502s on every field — avoid it until it's fixed upstream.
 
 ```go
 page, err := client.Segments.List(&openapi.ListSegmentsParams{Search: "vip", Sort: "-count"})
@@ -265,8 +269,11 @@ segment, err := client.Segments.Get("segment-id")
 
 // Filters is required; pass an empty slice to match every contact.
 segment, err = client.Segments.Create(&openapi.CreateSegmentRequest{
-    Name:    "VIP buyers",
-    Filters: []map[string]any{{"field": "labels", "operator": "in", "value": []string{"vip"}}},
+    Name: "VIP buyers",
+    Filters: []map[string]any{
+        {"field": "labels", "type": "LIST", "operator": "CONTAIN_ANY", "values": []string{"vip", "cold-leads"}},
+        {"field": "firstname", "type": "TEXT", "operator": "CONTAIN", "values": []string{""}},
+    },
 })
 
 // Omitted fields keep their current value.
