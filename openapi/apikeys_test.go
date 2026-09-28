@@ -115,7 +115,7 @@ func TestAPIKeysService_AllMethodsGuardedWithoutSecretKey(t *testing.T) {
 	calls := map[string]func() error{
 		"List":   func() error { _, err := c.APIKeys.List(nil); return err },
 		"Get":    func() error { _, err := c.APIKeys.Get(1); return err },
-		"Create": func() error { _, err := c.APIKeys.Create(&CreateAPIKeyRequest{}); return err },
+		"Create": func() error { _, err := c.APIKeys.Create(&CreateAPIKeyRequest{PermissionIDs: []int{1}}); return err },
 		"Update": func() error { _, err := c.APIKeys.Update(1, &UpdateAPIKeyRequest{PermissionIDs: []int{1}}); return err },
 		"Delete": func() error { return c.APIKeys.Delete(1) },
 	}

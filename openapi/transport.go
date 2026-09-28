@@ -3,6 +3,7 @@ package openapi
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/url"
 	"strings"
 )
@@ -31,6 +32,18 @@ type request struct {
 
 	// accept overrides the default "application/json" Accept header.
 	accept string
+
+	// files and formData send the request as multipart/form-data instead of
+	// JSON, for the CSV contact import.
+	files    []multipartFile
+	formData map[string]string
+}
+
+// multipartFile is one file part of a multipart request.
+type multipartFile struct {
+	field    string
+	filename string
+	reader   io.Reader
 }
 
 // do is the single path every Open API call takes. It enforces the secret key
@@ -60,7 +73,13 @@ func (c *Client) do(req request) error {
 	if len(req.query) > 0 {
 		r.SetQueryParamsFromValues(req.query)
 	}
-	if req.body != nil {
+	switch {
+	case len(req.files) > 0 || req.formData != nil:
+		for _, f := range req.files {
+			r.SetFileReader(f.field, f.filename, f.reader)
+		}
+		r.SetFormData(req.formData)
+	case req.body != nil:
 		r.SetHeader("Content-Type", "application/json").SetBody(req.body)
 	}
 

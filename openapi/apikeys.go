@@ -64,6 +64,13 @@ type UpdateAPIKeyRequest struct {
 	AllowedIP      string `json:"allowedIp,omitempty"`
 }
 
+func (r *CreateAPIKeyRequest) validate() error {
+	if r == nil || len(r.PermissionIDs) == 0 {
+		return errors.New("api keys create requires at least one PermissionID")
+	}
+	return nil
+}
+
 func (r *UpdateAPIKeyRequest) validate() error {
 	if r == nil || len(r.PermissionIDs) == 0 {
 		return errors.New("api keys update requires at least one PermissionID")
@@ -128,6 +135,9 @@ func (s *APIKeysService) Get(id int) (*APIKeyDetail, error) {
 
 // Create issues a new API key.
 func (s *APIKeysService) Create(req *CreateAPIKeyRequest) (*APIKeyDetail, error) {
+	if err := req.validate(); err != nil {
+		return nil, err
+	}
 	return object[APIKeyDetail](s.c, request{
 		capability: "APIKeys.Create",
 		method:     http.MethodPost,

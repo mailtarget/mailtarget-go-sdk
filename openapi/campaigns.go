@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // CampaignsService manages email campaigns.
@@ -251,5 +252,28 @@ func (s *CampaignsService) SendTest(id, recipient string) error {
 		method:     http.MethodPost,
 		path:       "/campaigns/" + url.PathEscape(id) + "/send-test",
 		body:       map[string]string{"recipient": recipient},
+	})
+}
+
+// SetSchedule schedules a campaign to send at dueDate and returns the updated
+// campaign.
+func (s *CampaignsService) SetSchedule(id, dueDate string) (*CampaignDetail, error) {
+	if strings.TrimSpace(dueDate) == "" {
+		return nil, errors.New("campaign set-schedule requires a dueDate")
+	}
+	return object[CampaignDetail](s.c, request{
+		capability: "Campaigns.SetSchedule",
+		method:     http.MethodPost,
+		path:       "/campaigns/" + url.PathEscape(id) + "/set-schedule",
+		body:       map[string]string{"dueDate": dueDate},
+	})
+}
+
+// CancelSchedule removes a campaign's schedule so it does not send.
+func (s *CampaignsService) CancelSchedule(id string) error {
+	return s.c.do(request{
+		capability: "Campaigns.CancelSchedule",
+		method:     http.MethodPost,
+		path:       "/campaigns/" + url.PathEscape(id) + "/cancel-schedule",
 	})
 }

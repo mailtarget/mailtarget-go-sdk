@@ -252,6 +252,35 @@ total, err := client.Contacts.Count(nil)
 // Export returns one page as CSV. Paging past the last contact returns an
 // *openapi.Error with StatusCode 404, which marks the end of the export.
 csv, err := client.Contacts.Export(&openapi.ListContactsParams{Page: 1, PerPage: 100})
+
+// Every field a contact has, built in and custom; use FieldName in an import mapping.
+fields, err := client.Contacts.Fields()
+```
+
+#### Importing contacts from CSV
+
+`Import` uploads the file as multipart form data. The file is checked before it
+is queued, and the result carries that validation report next to the job.
+`File`, `Filename`, `FieldMapping` (CSV header → contact field) and at least one
+label are required.
+
+```go
+f, err := os.Open("contacts.csv")
+defer f.Close()
+
+result, err := client.Contacts.Import(&openapi.ImportContactsRequest{
+    File:         f,
+    Filename:     "contacts.csv",
+    FieldMapping: map[string]string{"Email Address": "email", "Name": "firstname"},
+    Labels:       []string{"newsletter"},
+    ImportMode:   openapi.ImportModeSkipExisting, // or ImportModeReplaceAll, ImportModeFillEmpty
+})
+fmt.Println(result.Import.ID, result.Import.State, result.Validation.EstimatedValid)
+
+jobs, err := client.Contacts.Imports(&openapi.ListContactImportsParams{State: "RUNNING"})
+queue, err := client.Contacts.CurrentImport()      // queue.StillImporting
+job, err := client.Contacts.GetImport(result.Import.ID)
+cancelled, err := client.Contacts.CancelImport(result.Import.ID) // best effort while RUNNING
 ```
 
 ### Segments
@@ -326,7 +355,7 @@ key, err := client.APIKeys.Get(7)
 key, err = client.APIKeys.Create(&openapi.CreateAPIKeyRequest{
     Name: "ci", PermissionIDs: []int{1, 2},
 })
-// PermissionIDs is required and must be non-empty on update.
+// PermissionIDs is required and must be non-empty on create and update.
 key, err = client.APIKeys.Update(7, &openapi.UpdateAPIKeyRequest{
     Name: "renamed", PermissionIDs: []int{1, 2},
 })
@@ -356,6 +385,17 @@ recipients, err := client.Campaigns.Recipients("campaign-id", &openapi.ListCampa
 
 err = client.Campaigns.Send("campaign-id")
 err = client.Campaigns.SendTest("campaign-id", "qa@example.com")
+
+// Schedule instead of sending now; the due date is required.
+campaign, err = client.Campaigns.SetSchedule("campaign-id", "2026-10-01 09:00")
+err = client.Campaigns.CancelSchedule("campaign-id")
+```
+
+### Templates
+
+```go
+page, err := client.Templates.List(&openapi.ListTemplatesParams{Search: "Welcome", EmailType: "regular"})
+template, err := client.Templates.Get("template-id") // includes Content, Body and CSS
 ```
 
 ### Senders and sending domains
@@ -476,7 +516,7 @@ fmt.Println(result.TransmissionID)
 
 All Open API resources are implemented: **Contacts**, **Segments**, **Analytics**, **API Keys**,
 **Campaigns**, **Senders**, **Sending Domains**, **Labels**, **Suppressions**, **Webhooks**,
-**Webhook Events**, **Settings**, **Usage**, **Sub Accounts** and **Transmissions**.
+**Webhook Events**, **Settings**, **Usage**, **Sub Accounts**, **Templates** and **Transmissions**.
 
 ### Adding a new Open API resource
 
