@@ -394,7 +394,9 @@ unsubscribes, err := client.Suppressions.Unsubscribes(nil)
 found, err := client.Suppressions.Lookup(&openapi.LookupSuppressionsParams{Email: "recipient@example.com"})
 
 // Email, Type and Source are required; Type and Source are free-form (max 255
-// characters). Leave SubAccountID zero to suppress account-wide.
+// characters). Only Source changes where the row shows up: "Bounce Rule" puts it
+// under Bounces, "List Unsubscribe" or "Link Unsubscribe" under Unsubscribes.
+// Leave SubAccountID zero to suppress account-wide.
 sup, err := client.Suppressions.Create(&openapi.CreateSuppressionRequest{
     Email: "recipient@example.com", Type: "Non-transactional", Source: "Manual",
 })
