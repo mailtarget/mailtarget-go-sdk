@@ -5,7 +5,7 @@ The Layang Golang SDK enable Golang developer to work with Layang API efficientl
 ## Getting Started
 
 ### Requirements
-To run SDK, you will need go1.25+.
+To run SDK, you will need go1.18+.
 
 ### Authentication
 When you Sign Up, you can generate API Key in Layang Dashboard. To view your API Key in the Layang dashboard, click on Configuration on the left-hand navbar in the Layang dashboard and then API Key.
@@ -277,11 +277,107 @@ if errors.As(err, &apiErr) {
 Open API requests time out after 30 seconds by default; override with
 `layang.WithOpenAPITimeout(d)`.
 
+### API Keys
+
+Manages the Mailtarget API keys used for sending. These calls authenticate with the Open API secret
+key, while the keys they return are the sending credentials.
+
+```go
+page, err := client.APIKeys.List(&openapi.ListAPIKeysParams{Page: 1, PerPage: 10})
+key, err := client.APIKeys.Get(7)
+key, err = client.APIKeys.Create(&openapi.CreateAPIKeyRequest{
+    Name: "ci", PermissionIDs: []int{1, 2},
+})
+key, err = client.APIKeys.Update(7, &openapi.UpdateAPIKeyRequest{Name: "renamed"})
+err = client.APIKeys.Delete(7)
+```
+
+### Campaigns
+
+```go
+page, err := client.Campaigns.List(&openapi.ListCampaignsParams{Search: "Promo"})
+campaign, err := client.Campaigns.Get("campaign-id")
+
+campaign, err = client.Campaigns.Create(&openapi.CampaignRequest{
+    Subject:    "Monthly newsletter",
+    Sender:     &openapi.CampaignSender{Email: "no-reply@example.com"},
+    Recipients: &openapi.CampaignRecipients{Labels: []string{"vip"}},
+})
+campaign, err = client.Campaigns.Update("campaign-id", &openapi.CampaignRequest{Subject: "Updated"})
+err = client.Campaigns.Delete("campaign-id")
+
+stats, err := client.Campaigns.Analytics("campaign-id")
+
+// Status is required: delivered, opened, clicked, bounced or complained.
+recipients, err := client.Campaigns.Recipients("campaign-id", &openapi.ListCampaignRecipientsParams{
+    Status: "opened", Page: 1,
+})
+
+err = client.Campaigns.Send("campaign-id")
+err = client.Campaigns.SendTest("campaign-id", "qa@example.com")
+```
+
+### Senders and sending domains
+
+```go
+// Senders is not paginated; it returns every identity.
+senders, err := client.Senders.List()
+sender, err := client.Senders.Get("sender-id")
+sender, err = client.Senders.Create(&openapi.SenderRequest{Email: "no-reply@example.com", Name: "No reply"})
+sender, err = client.Senders.Update("sender-id", &openapi.SenderRequest{Name: "Renamed"})
+err = client.Senders.Delete("sender-id")
+
+status, err := client.Senders.CheckDomain("no-reply@example.com")
+
+domains, err := client.SendingDomains.List(nil)
+domain, err := client.SendingDomains.Get(5)
+domain, err = client.SendingDomains.VerifyTXT(5)
+```
+
+### Labels
+
+```go
+page, err := client.Labels.List(&openapi.ListLabelsParams{Search: "vip"})
+label, err := client.Labels.Create("newsletter")
+label, err = client.Labels.Rename("newsletter", "monthly-newsletter")
+
+// The endpoint takes the names as one comma separated segment.
+err = client.Labels.Delete("vip", "cold-lead")
+```
+
+### Settings and sub-accounts
+
+```go
+company, err := client.Settings.Company()
+profile, err := client.Settings.Profile()
+
+// Note: this endpoint spells the page size "size", not "perPage".
+page, err := client.SubAccounts.List(&openapi.ListSubAccountsParams{Page: 1, Size: 25})
+```
+
+### Transmissions (Open API)
+
+The Open API has its own send endpoint. **Prefer `client.Send` / `Layang.Send`** for sending email:
+it needs only the Mailtarget API key, while this one also requires the Open API secret key. This is
+here so the SDK covers the whole Open API surface.
+
+The endpoint carries the Mailtarget API key in its body rather than the header; the SDK fills that
+in from the key the client was built with, so you never pass it twice.
+
+```go
+result, err := client.Transmissions.Send(&openapi.SendEmailRequest{
+    From:    &openapi.Address{Email: "no-reply@example.com", Name: "No reply"},
+    Subject: "Hello",
+    To:      []openapi.Address{{Email: "recipient@example.com"}},
+    BodyHTML: "<p>Hello</p>",
+})
+fmt.Println(result.TransmissionID)
+```
+
 ### Available resources
 
-Currently implemented: **Contacts**, **Analytics**. The remaining Open API resources (API Keys,
-Campaigns, Senders, Sending Domains, Labels, Settings, Sub Accounts and the Open API's own
-transmissions endpoint) are being rolled out incrementally.
+All Open API resources are implemented: **Contacts**, **Analytics**, **API Keys**, **Campaigns**,
+**Senders**, **Sending Domains**, **Labels**, **Settings**, **Sub Accounts** and **Transmissions**.
 
 ### Adding a new Open API resource
 

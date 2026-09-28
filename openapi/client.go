@@ -42,8 +42,20 @@ const (
 // Client is the Mailtarget Open API client. Resources hang off it as fields,
 // so adding a capability means adding one file and one line of wiring here.
 type Client struct {
-	Contacts  *ContactsService
-	Analytics *AnalyticsService
+	Contacts       *ContactsService
+	Analytics      *AnalyticsService
+	APIKeys        *APIKeysService
+	Campaigns      *CampaignsService
+	Senders        *SendersService
+	SendingDomains *SendingDomainsService
+	Labels         *LabelsService
+	Settings       *SettingsService
+	SubAccounts    *SubAccountsService
+
+	// Transmissions is the Open API's own send endpoint. Sending through
+	// layang.Layang is preferred: it needs only the Mailtarget API key, while
+	// this one also requires the Open API secret key.
+	Transmissions *TransmissionsService
 
 	baseURL    string
 	apiVersion string
@@ -51,6 +63,11 @@ type Client struct {
 	timeout    time.Duration
 	httpClient *http.Client
 	resty      *resty.Client
+
+	// transmissionAPIKey is the Mailtarget API key, needed only by the Open
+	// API's own /transmissions endpoint, which carries it in the request body
+	// rather than the Authorization header.
+	transmissionAPIKey string
 }
 
 // Option customises a Client at construction time.
@@ -78,6 +95,13 @@ func WithHTTPClient(httpClient *http.Client) Option {
 	return func(c *Client) { c.httpClient = httpClient }
 }
 
+// WithTransmissionAPIKey supplies the Mailtarget API key that the Open API's
+// own /transmissions endpoint expects inside the request body. The parent SDK
+// passes it automatically; set it only when using this package standalone.
+func WithTransmissionAPIKey(apiKey string) Option {
+	return func(c *Client) { c.transmissionAPIKey = apiKey }
+}
+
 // New builds an Open API client. The secret key is optional, so a client can be
 // created before it is known and filled in later with SetSecretKey.
 func New(opts ...Option) *Client {
@@ -98,6 +122,14 @@ func New(opts ...Option) *Client {
 
 	c.Contacts = &ContactsService{c: c}
 	c.Analytics = &AnalyticsService{c: c}
+	c.APIKeys = &APIKeysService{c: c}
+	c.Campaigns = &CampaignsService{c: c}
+	c.Senders = &SendersService{c: c}
+	c.SendingDomains = &SendingDomainsService{c: c}
+	c.Labels = &LabelsService{c: c}
+	c.Settings = &SettingsService{c: c}
+	c.SubAccounts = &SubAccountsService{c: c}
+	c.Transmissions = &TransmissionsService{c: c}
 	return c
 }
 

@@ -84,7 +84,12 @@ func NewMailtargetClient(apiKey string, opts ...ClientOption) *MailtargetClient 
 	// Both capabilities share one HTTP client so they share a connection pool.
 	// That is safe because auth headers are always set per request, never as a
 	// client default, so neither credential can reach the other's host.
-	options := append([]openapi.Option{openapi.WithHTTPClient(layang.resty.GetClient())}, cfg.openAPI...)
+	options := append([]openapi.Option{
+		openapi.WithHTTPClient(layang.resty.GetClient()),
+		// The Open API's own /transmissions endpoint carries the Mailtarget API
+		// key in its body, so hand it over for that one resource to fill in.
+		openapi.WithTransmissionAPIKey(apiKey),
+	}, cfg.openAPI...)
 
 	return &MailtargetClient{
 		Layang: layang,
