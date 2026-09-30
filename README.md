@@ -1,233 +1,434 @@
-# Layang Golang SDK
+# Mailtarget Go SDK
 
-The Layang Golang SDK enable Golang developer to work with Layang API efficiently.
+The official Go SDK for [Mailtarget](https://mailtarget.co). It covers two things:
 
-## Getting Started
+- **Sending email** through Layang, Mailtarget's transactional sending API.
+- **Managing your account** through the Mailtarget Open API: contacts, segments, campaigns,
+  templates, senders and domains, suppressions, webhooks, analytics, sub-accounts, API keys and
+  usage.
 
-### Requirements
-To run SDK, you will need go1.18+.
+Each capability uses its own credential, and you can use sending on its own.
 
-### Authentication
-When you Sign Up, you can generate API Key in Layang Dashboard. To view your API Key in the Layang dashboard, click on Configuration on the left-hand navbar in the Layang dashboard and then API Key.
+## Contents
 
-## Setup Client
+- [Installation](#installation)
+- [Credentials](#credentials)
+- [Quickstart](#quickstart)
+- [Sending email](#sending-email)
+- [Using the Open API](#using-the-open-api)
+- [Guides](#guides)
+- [Resource reference](#resource-reference)
+- [Known limitations](#known-limitations)
+- [License](#license)
 
-### Client Configuration
-Default client configuration :
-```go
-l := layang.NewLayang(privateAPIKey)
+## Installation
+
+Requires Go 1.18 or later.
+
+```sh
+go get github.com/mailtarget/mailtarget-go-sdk
 ```
 
-### Form Example
+The root package is named `layang`, and the Open API lives in the `openapi` subpackage:
+
 ```go
-
-// sender
-sender := layang.Address{
-    Email: "sender@example.com",
-    Name:  "Sender",
-}
-
-// subject
-subject := "Fancy subject!"
-
-// text
-text := "Hello from Layang Go!"
-
-// html
-html := `<p>My fantastic HTML content.<br><br><b>MailTarget</b> <img src=\"cid:AnImage.png\"></p>`
-
-// to
-var to = []Address{
-	{
-		Email: "to@example.com",
-		Name:  "To",
-	},
-	{
-		Email: "to2@example.com",
-		Name:  "To2",
-	},
-}
-
-// attachment
-attachment := Attachment{
-    MimeType:     "image/png",
-    Filename: "AnImage.png",
-    Value:  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAXxJREFUOBFjvJVg84P5718WBjLAX2bmPyxMf/+xMDH8YyZDPwPDXwYGJkIaOXTNGdiUtHAqI2jA/18/GUQzGsg3gMfKg4FVQo6BiYcPqyF4XcChaczA4+DP8P//f4b/P3+SZgAzvxCDSGYjAyMjI8PvZw+AoYXdLuyiQLtE0uoZWAREwLb+fnKXQTipkngXcJu7MnACQx8G2FX1GHgs3bDGBlYX8HlFM/z9+JbhzewWhmf1CQyfti9j+PfzBwO/ZxTMTDiNmQKBfmZX1GB42V/K8P38YbDCX/dvMDAwMzPwuYbBNcIYmC4AhfjvXwx/376AqQHTf96+ZPj34xuKGIiDaQBQ8PPBTQwCoZkMjJzcYA3MgqIMAr7xDJ/3rAHzkQnGO7FWf5gZ/qLmBSZmBoHgNAZee1+Gf18/MzCyczJ83LyQ4fPetch6Gf4xMP3FbgBMGdAgJqAr/n37zABMTTBROA0ygAWUJUG5Civ4B8xwX78CpbD6FJiHmf4AAFicbTMTr5jAAAAAAElFTkSuQmCC",
-}
-var attachments := []Attachment{
-    attachment,
-}
-
-// metadata
-var metadata := map[string]string{"key1": "value1", "key2": "value2"}
-
-// options attribute
-var optionsAttributes := OptionsAttributes{
-    ClickTracking: true,
-    OpenTracking:  true,
-}
+import (
+    "github.com/mailtarget/mailtarget-go-sdk"         // package layang
+    "github.com/mailtarget/mailtarget-go-sdk/openapi"
+)
 ```
 
-### Creating Message
-Message is the payload used to send email. There are some field that required like subject, text, html, sender and recipient.
-```go
-message := l.NewMessage(subject, text, html, sender, recipient)
-```
+## Credentials
 
-### Set Attachment
-```go
-message.SetAttachment(attachments)
-```
+| | Mailtarget API key | Open API secret key |
+|---|---|---|
+| Required | Yes | Only for Open API calls |
+| Where to get it | Generate it yourself at [app.mailtarget.co/api-key](https://app.mailtarget.co/api-key) | Issued on request; contact your Mailtarget account manager |
+| Used for | Sending email | Everything under `openapi` |
 
-### Set Metadata
-```go
-message.SetMetadata(metadata)
-```
+Keep both keys out of source control, for example by reading them from environment variables.
 
-### Set Options Attribute
-```go
-message.SetOptionsAttributes(optionsAttributes)
-```
+## Quickstart
 
-### Sending Message
-```go
-successResponse, errorResponse, err := l.Send(message)
-if err != nil {
-    log.Fatal(err)
-}
-
-fmt.Printf("Succcess Response: %+v Error Response: %+v\n", successResponse, errorResponse)
-```
-
-### Full Example
 ```go
 package main
 
 import (
 	"fmt"
-	"github.com/mailtarget/mailtarget-go-sdk"
 	"log"
+	"os"
+
+	"github.com/mailtarget/mailtarget-go-sdk"
 )
 
-var privateAPIKey = "your-private-key"
-
 func main() {
-	// Create an instance of the Layang Client
-	l := layang.NewLayang(privateAPIKey)
+	client := layang.NewMailtargetClient(os.Getenv("MAILTARGET_API_KEY"))
 
-	sender := layang.Address{
-		Email: "sender@example.com",
-		Name:  "Sender",
-	}
-	subject := "Fancy subject!"
-	body := "Hello from Layang Go!"
-	html := `<p>My fantastic HTML content.<br><br><b>MailTarget</b> <img src=\"cid:AnImage.png\"></p>`
-	recipient := layang.Recipient{Address: layang.Address{
-		Email: "recipient@example.com",
-		Name:  "Recipient",
-	}}
-	attachment := layang.Attachment{
-		Type:     "image/png",
-		Filename: "AnImage.png",
-		Content:  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAXxJREFUOBFjvJVg84P5718WBjLAX2bmPyxMf/+xMDH8YyZDPwPDXwYGJkIaOXTNGdiUtHAqI2jA/18/GUQzGsg3gMfKg4FVQo6BiYcPqyF4XcChaczA4+DP8P//f4b/P3+SZgAzvxCDSGYjAyMjI8PvZw+AoYXdLuyiQLtE0uoZWAREwLb+fnKXQTipkngXcJu7MnACQx8G2FX1GHgs3bDGBlYX8HlFM/z9+JbhzewWhmf1CQyfti9j+PfzBwO/ZxTMTDiNmQKBfmZX1GB42V/K8P38YbDCX/dvMDAwMzPwuYbBNcIYmC4AhfjvXwx/376AqQHTf96+ZPj34xuKGIiDaQBQ8PPBTQwCoZkMjJzcYA3MgqIMAr7xDJ/3rAHzkQnGO7FWf5gZ/qLmBSZmBoHgNAZee1+Gf18/MzCyczJ83LyQ4fPetch6Gf4xMP3FbgBMGdAgJqAr/n37zABMTTBROA0ygAWUJUG5Civ4B8xwX78CpbD6FJiHmf4AAFicbTMTr5jAAAAAAElFTkSuQmCC",
-	}
-	attachments := []layang.Attachment{
-		attachment,
-	}
-	metadata := map[string]string{"key1": "value1", "key2": "value2"}
-	optionsAttributes := layang.OptionsAttributes{
-		ClickTracking: true,
-		OpenTracking:  true,
-	}
+	message := client.Layang.NewMessage(
+		"Welcome aboard",                         // subject
+		"Thanks for signing up.",                 // plain text body
+		"<p>Thanks for <b>signing up</b>.</p>",   // HTML body
+		layang.Address{Email: "hello@example.com", Name: "Example"},
+		[]layang.Address{{Email: "recipient@example.com", Name: "Recipient"}},
+	)
 
-	// The message object allows you to add attachments meta and options attribute
-	message := l.NewMessage(subject, body, html, sender, recipient)
-	message.SetAttachment(attachments)
-	message.SetMetadata(metadata)
-	message.SetOptionsAttributes(optionsAttributes)
-
-	// Send the message
-	successResponse, errorResponse, err := l.Send(message)
+	success, apiErr, err := client.Send(message)
 	if err != nil {
+		if apiErr != nil {
+			log.Fatalf("rejected: status=%d code=%s message=%s", apiErr.Status, apiErr.Code, apiErr.Message)
+		}
 		log.Fatal(err)
 	}
-
-	fmt.Printf("Succcess Response: %+v Error Response: %+v\n", successResponse, errorResponse)
+	fmt.Println("transmission id:", success.TransmissionId)
 }
 ```
 
-## Mailtarget Open API
+## Sending email
 
-Beyond sending email, the SDK can reach the Mailtarget Open API (contacts, analytics and more).
-That API uses a **second credential**, the Open API secret key, which is issued on request through
-your account manager — unlike the Mailtarget API key, you cannot generate it yourself from the
-dashboard.
+`layang.NewMailtargetClient(apiKey)` is the entry point. It only needs the Mailtarget API key, and
+sending never goes through the Open API, so it works whether or not you have a secret key.
 
-The two credentials are separate on purpose:
+If you only ever send email, `layang.NewLayang(apiKey)` gives you the sender on its own. It has the
+same `NewMessage` and `Send` methods.
 
-| | Mailtarget API key | Open API secret key |
-|---|---|---|
-| Required | yes | no, only for Open API calls |
-| Obtained from | your dashboard | request to Mailtarget admin (CRM) |
-| Used for | sending email | Open API resources |
+### Building a message
 
-Sending email always uses the Mailtarget API key and is never routed through the Open API, so a
-client built without an Open API secret key sends email exactly as before.
-
-Open API resources live in the `openapi` subpackage. `MailtargetClient` embeds it, so its resources
-read the same way as in the Java and Python SDKs — directly off `client`:
+`NewMessage` takes the subject, text body, HTML body, sender and recipients. You can set the rest
+with setters, or fill in the `layang.Message` struct yourself.
 
 ```go
-import (
-    "github.com/mailtarget/mailtarget-go-sdk"
-    "github.com/mailtarget/mailtarget-go-sdk/openapi"
-)
+message := client.Layang.NewMessage(subject, text, html, from, to)
 
+message.SetCC([]layang.Address{{Email: "cc@example.com"}})
+message.SetBCC([]layang.Address{{Email: "audit@example.com"}})
+message.SetReplyTo([]layang.Address{{Email: "support@example.com", Name: "Support"}})
+message.SetHeaders([]layang.Header{{Name: "X-Campaign", Value: "welcome"}})
+message.SetMetadata(map[string]string{"userId": "42"})
+message.SetOptionsAttributes(layang.OptionsAttributes{ClickTracking: true, OpenTracking: true})
+```
+
+### Attachments and inline images
+
+`Value` is the file content encoded in base64. The example below references the attachment's
+filename from the HTML body with `cid:` to show it inline:
+
+```go
+logo, err := os.ReadFile("logo.png")
+if err != nil {
+    log.Fatal(err)
+}
+
+message := client.Layang.NewMessage(
+    "Your invoice",
+    "Your invoice is attached.",
+    `<p>Your invoice is attached.</p><img src="cid:logo.png">`,
+    layang.Address{Email: "billing@example.com"},
+    []layang.Address{{Email: "recipient@example.com"}},
+)
+message.SetAttachment([]layang.Attachment{{
+    MimeType: "image/png",
+    Filename: "logo.png",
+    Value:    base64.StdEncoding.EncodeToString(logo),
+}})
+```
+
+### Validation
+
+`Send` checks the message before any request is made, and fails with an error if any of these is
+not met:
+
+- the client has an API key;
+- `From.Email` is a valid address;
+- at least one `To` address is given, and every `To`, `Cc`, `Bcc` and `ReplyTo` address is valid;
+- a text body, an HTML body or both are set;
+- an HTML body contains at least one HTML tag.
+
+The subject is not checked locally.
+
+### Handling the response
+
+`Send` returns three values:
+
+| Outcome | `*SuccessResponse` | `*ErrorResponse` | `error` |
+|---|---|---|---|
+| Accepted | has `TransmissionId` | `nil` | `nil` |
+| Rejected by the API | `nil` | has `Status`, `Code`, `Message` | raw response body |
+| Failed local validation | empty struct | empty struct | the reason |
+
+Always check `err` first, and read the `*ErrorResponse` for details only when it is non-nil and
+`Status` is set.
+
+### Templates and substitution data
+
+The Layang sender takes the message body directly. To send from a stored template with
+substitution data, use the Open API's own send endpoint, `client.Transmissions.Send`
+([see below](#transmissions)). It needs the Open API secret key as well.
+
+## Using the Open API
+
+### Enabling it
+
+Pass the secret key when building the client. Open API resources are then available directly on
+`client`:
+
+```go
 client := layang.NewMailtargetClient(
-    privateAPIKey,
-    layang.WithOpenAPISecretKey(openAPISecretKey),
+    os.Getenv("MAILTARGET_API_KEY"),
+    layang.WithOpenAPISecretKey(os.Getenv("MAILTARGET_OPENAPI_SECRET")),
 )
 
-// Sending still works the same way, through the Transmission API.
-successResponse, errorResponse, err := client.Send(message)
-
-// Open API resources.
 page, err := client.Contacts.List(nil)
 ```
 
-Without the secret key, every Open API call fails immediately with an `*openapi.ConfigError` and no
-HTTP request is made:
+Without the secret key every Open API call fails immediately with an `*openapi.ConfigError` and no
+request is sent. Use `client.HasOpenAPIAccess()` to skip Open API features instead, or
+`client.SetOpenAPISecretKey(key)` to supply the key later.
+
+If you never send email, use the subpackage on its own:
 
 ```go
-client := layang.NewMailtargetClient(privateAPIKey) // no Open API secret key
+oa := openapi.New(openapi.WithSecretKey(os.Getenv("MAILTARGET_OPENAPI_SECRET")))
+page, err := oa.Contacts.List(nil)
+```
 
-_, err := client.Contacts.List(nil)
+### Scopes
+
+Each secret key is granted scopes. A call outside them is refused with HTTP 403.
+
+| Resource | Read scope | Write scope |
+|---|---|---|
+| Contacts, contact imports, Segments | `contacts.read` | `contacts.write` |
+| Campaigns | `campaigns.read` | `campaigns.write` |
+| Templates | `campaigns.read` | — |
+| Analytics | `analytics.read` | — |
+| API Keys, Sub Accounts | `settings.read` | `settings.write` |
+| Usage | `settings.read` | — |
+| Suppressions | `suppressions.read` | `suppressions.write` |
+| Webhooks, Webhook Events | `webhooks.read` | `webhooks.write` |
+| Transmissions | — | `transmissions.write` |
+
+The API documents no scope for Senders, Sending Domains, Labels and Settings.
+
+### Errors
+
+Open API calls return one of three kinds of error:
+
+```go
+_, err := client.Campaigns.Get("campaign-id")
 
 var configErr *openapi.ConfigError
-if errors.As(err, &configErr) {
-    // "open API secret key is required to call Contacts.List — pass ..."
+var apiErr *openapi.Error
+switch {
+case err == nil:
+    // success
+case errors.As(err, &configErr):
+    // no secret key configured; nothing was sent
+case errors.As(err, &apiErr):
+    // the API answered with a non-2xx status
+    log.Printf("status=%d code=%s message=%s", apiErr.StatusCode, apiErr.Code, apiErr.Message)
+default:
+    // a required field was missing (checked locally, nothing was sent) or a network error
+    log.Print(err)
 }
 ```
 
-Use `client.HasOpenAPIAccess()` to branch on availability instead of handling the error, or
-`client.SetOpenAPISecretKey(...)` to supply the key later.
+Required fields are checked locally before any request. For example, `Contacts.Update` without
+`Email`, `Firstname` and `Labels` returns an error straight away.
 
-If you only need the Open API and never send email, use the subpackage on its own:
+### Timeouts
+
+Open API requests time out after 30 seconds. Change it with
+`layang.WithOpenAPITimeout(60 * time.Second)`.
+
+### Pagination
+
+List methods return a `*openapi.Page[T]` holding `Items` and `Meta` (`Page`, `PerPage`, `Total`).
+To walk every page:
 
 ```go
-oa := openapi.New(openapi.WithSecretKey(openAPISecretKey))
-page, err := oa.Contacts.List(nil)
+const perPage = 100
+for p := 1; ; p++ {
+    page, err := client.Contacts.List(&openapi.ListContactsParams{Page: p, PerPage: perPage})
+    if err != nil {
+        log.Fatal(err)
+    }
+    for _, contact := range page.Items {
+        fmt.Println(contact.Email)
+    }
+    if len(page.Items) < perPage || p*perPage >= page.Meta.Total {
+        break
+    }
+}
 ```
+
+`SubAccounts.List` and `WebhookEvents.List` name the page size `Size` instead of `PerPage`.
+`Senders.List` and `WebhookEvents.List` return a plain slice with no metadata.
+
+## Guides
+
+These cover the common end-to-end tasks, in the order the steps must happen.
+
+### Build your audience from a CSV
+
+Imports only accept labels that already exist, and map each CSV header to a contact field name.
+
+```go
+// 1. Make sure the label exists.
+_, err := client.Labels.Create("newsletter")
+
+// 2. Look up the field names the mapping can use.
+fields, err := client.Contacts.Fields()
+for _, f := range fields {
+    fmt.Println(f.FieldName, f.DisplayType)
+}
+
+// 3. Upload the file.
+f, err := os.Open("contacts.csv")
+if err != nil {
+    log.Fatal(err)
+}
+defer f.Close()
+
+result, err := client.Contacts.Import(&openapi.ImportContactsRequest{
+    File:         f,
+    Filename:     "contacts.csv",
+    FieldMapping: map[string]string{"Email Address": "email", "First Name": "firstname"},
+    Labels:       []string{"newsletter"},
+    ImportMode:   openapi.ImportModeSkipExisting, // or ImportModeReplaceAll (default), ImportModeFillEmpty
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("rows expected to import:", result.Validation.EstimatedValid)
+
+// 4. The import runs in the background; poll until it ends.
+for {
+    job, err := client.Contacts.GetImport(result.Import.ID)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if job.State == "FINISH" || job.State == "INTERUPTED" {
+        fmt.Println(job.State, job.NewContact, "new,", job.UpdatedContact, "updated", job.Message)
+        break
+    }
+    time.Sleep(5 * time.Second)
+}
+```
+
+Rules for the file and the import:
+
+- UTF-8, `,` or `;` delimited, at most 5 MiB and 20,000 contacts, with an email column.
+- Columns missing from `FieldMapping` are skipped, except `label` and `name`.
+- Only one import can run per account, including imports started from the dashboard. Another one
+  is refused with HTTP 409 `IMPORT_IN_PROGRESS`. Check `Contacts.CurrentImport()` first, or cancel
+  a job with `Contacts.CancelImport(id)`.
+- Problem rows are listed in `result.Validation`. With `Strict: true`, any problem row rejects the
+  whole file with HTTP 422.
+
+Once the contacts are in, group them with [segments](#segments).
+
+### Verify a sender
+
+A campaign can only be sent from a verified, permitted sender.
+
+```go
+sender, err := client.Senders.Create(&openapi.SenderRequest{Email: "news@example.com", Name: "Example News"})
+
+status, err := client.Senders.CheckDomain("news@example.com")
+fmt.Println("SPF", status.SPF, "DKIM", status.DKIM, "DMARC", status.DMARC, "permitted", status.Permitted)
+
+// After publishing the DNS records, ask Mailtarget to check them again.
+domains, err := client.SendingDomains.List(nil)
+domain, err := client.SendingDomains.VerifyTXT(domains.Items[0].ID)
+fmt.Println(sender.ID, domain.Status)
+```
+
+### Run a campaign
+
+```go
+// 1. Optionally start from a template. Its content and email type replace
+//    HTMLContent and EmailType on the campaign.
+templates, err := client.Templates.List(&openapi.ListTemplatesParams{Search: "Newsletter"})
+
+// 2. Create the campaign. Recipients are chosen by label.
+campaign, err := client.Campaigns.Create(&openapi.CampaignRequest{
+    Subject:    "October newsletter",
+    TemplateID: templates.Items[0].ID,
+    Sender:     &openapi.CampaignSender{Email: "news@example.com", Name: "Example News"},
+    Recipients: &openapi.CampaignRecipients{Labels: []string{"newsletter"}},
+})
+
+// 3. Send yourself a preview.
+err = client.Campaigns.SendTest(campaign.ID, "qa@example.com")
+
+// 4. Send now, or schedule it. The due date is an RFC 3339 timestamp in the future.
+err = client.Campaigns.Send(campaign.ID)
+campaign, err = client.Campaigns.SetSchedule(campaign.ID, time.Now().Add(24*time.Hour).Format(time.RFC3339))
+err = client.Campaigns.CancelSchedule(campaign.ID)
+
+// 5. Follow the results.
+stats, err := client.Campaigns.Analytics(campaign.ID)
+opened, err := client.Campaigns.Recipients(campaign.ID, &openapi.ListCampaignRecipientsParams{Status: "opened"})
+fmt.Println(stats.OpenRate, opened.Meta.Total)
+```
+
+### Keep your list clean
+
+Suppressed addresses no longer receive email. Check before a one-off send, and subscribe a
+webhook to learn about bounces and unsubscribes as they happen.
+
+```go
+found, err := client.Suppressions.Lookup(&openapi.LookupSuppressionsParams{Email: "recipient@example.com"})
+if err == nil && len(found.Items) > 0 {
+    fmt.Println("suppressed:", found.Items[0].Source)
+}
+
+// Event IDs come from the webhook event catalog.
+events, err := client.WebhookEvents.List(nil)
+ids := make([]int, 0, len(events))
+for _, e := range events {
+    ids = append(ids, e.ID)
+}
+
+hook, err := client.Webhooks.Create(&openapi.CreateWebhookRequest{
+    Name:      "crm-sync",
+    TargetURL: "https://crm.example.com/mailtarget-events",
+    EventIDs:  ids,
+})
+fmt.Println(hook.ID)
+```
+
+### Provision a sub-account
+
+Give a client or brand its own sub-account and sending key:
+
+```go
+sub, err := client.SubAccounts.Create(&openapi.CreateSubAccountRequest{Name: "Client A"})
+
+// PermissionIDs is required; the Permissions of an existing key (APIKeys.Get)
+// show which IDs are available.
+key, err := client.APIKeys.Create(&openapi.CreateAPIKeyRequest{
+    Name:          "client-a-sending",
+    SubAccountID:  sub.ID,
+    PermissionIDs: []int{1},
+})
+
+// The new key sends email for that sub-account.
+subClient := layang.NewMailtargetClient(key.Key)
+fmt.Println(subClient.HasOpenAPIAccess())
+```
+
+Check the sending volume before a large send with `client.Usage.Get()`. On plans without a fixed
+monthly quota, the quota fields read 0; that does not block sending.
+
+## Resource reference
+
+Every method below is on `client` (or on a standalone `openapi.Client`).
 
 ### Contacts
 
 ```go
-// List returns one page plus its pagination metadata.
-page, err := client.Contacts.List(&openapi.ListContactsParams{
-    Page: 1, PerPage: 20, Search: "@mtarget.co",
-})
-fmt.Println(page.Items, page.Meta.Total)
-
+page, err := client.Contacts.List(&openapi.ListContactsParams{Page: 1, PerPage: 20, Search: "@example.com"})
 contact, err := client.Contacts.Get("contact-id")
 contact, err = client.Contacts.GetByEmail("recipient@example.com")
 
@@ -247,50 +448,42 @@ contact, err = client.Contacts.Update("contact-id", &openapi.UpdateContactReques
 
 err = client.Contacts.Delete("contact-id")
 
-total, err := client.Contacts.Count(nil)
+// Count takes the same filters as segments; nil counts every contact.
+total, err := client.Contacts.Count(map[string]any{
+    "filters": []map[string]any{{"field": "labels", "type": "LIST", "operator": "CONTAIN_ANY", "values": []string{"vip"}}},
+})
 
 // Export returns one page as CSV. Paging past the last contact returns an
 // *openapi.Error with StatusCode 404, which marks the end of the export.
 csv, err := client.Contacts.Export(&openapi.ListContactsParams{Page: 1, PerPage: 100})
 
-// Every field a contact has, built in and custom; use FieldName in an import mapping.
 fields, err := client.Contacts.Fields()
 ```
 
-#### Importing contacts from CSV
-
-`Import` uploads the file as multipart form data. The file is checked before it
-is queued, and the result carries that validation report next to the job.
-`File`, `Filename`, `FieldMapping` (CSV header → contact field) and at least one
-label are required.
+Contact imports:
 
 ```go
-f, err := os.Open("contacts.csv")
-defer f.Close()
-
-result, err := client.Contacts.Import(&openapi.ImportContactsRequest{
-    File:         f,
-    Filename:     "contacts.csv",
-    FieldMapping: map[string]string{"Email Address": "email", "Name": "firstname"},
-    Labels:       []string{"newsletter"},
-    ImportMode:   openapi.ImportModeSkipExisting, // or ImportModeReplaceAll, ImportModeFillEmpty
-})
-fmt.Println(result.Import.ID, result.Import.State, result.Validation.EstimatedValid)
-
+result, err := client.Contacts.Import(&openapi.ImportContactsRequest{ /* see the guide above */ })
 jobs, err := client.Contacts.Imports(&openapi.ListContactImportsParams{State: "RUNNING"})
-queue, err := client.Contacts.CurrentImport()      // queue.StillImporting
-job, err := client.Contacts.GetImport(result.Import.ID)
-cancelled, err := client.Contacts.CancelImport(result.Import.ID) // best effort while RUNNING
+queue, err := client.Contacts.CurrentImport() // queue.StillImporting
+job, err := client.Contacts.GetImport("import-id")
+cancelled, err := client.Contacts.CancelImport("import-id") // best effort while RUNNING
 ```
+
+Import states are `READY`, `RUNNING`, `FINISH` and `INTERUPTED` (the API's spelling). A failed
+import carries the reason in `Message`.
 
 ### Segments
 
-Segments are saved, named contact filters. `Filters` uses the same structure as the filters body of
-`Contacts.Count`: each condition is `{"field", "type", "operator", "values"}`, with uppercase `type`
-(`TEXT`, `NUMBER`, `DATE`, `LIST`) and uppercase `operator` (`MATCH`, `CONTAIN`, `NOT_CONTAIN`,
-`CONTAIN_ANY`, `CONTAIN_ALL`, `NOT_CONTAIN_ANY`, `IS_EMPTY`, `GREATER_THAN`, `LESS_THAN`); `values` is
-always a slice. Conditions on different fields are ANDed together. The `IS_NOT_EMPTY` operator
-currently 502s on every field — avoid it until it's fixed upstream.
+Segments are saved, named contact filters. Each condition in `Filters` is
+`{"field", "type", "operator", "values"}`:
+
+- `type` is uppercase: `TEXT`, `NUMBER`, `DATE` or `LIST`.
+- `operator` is uppercase: `MATCH`, `CONTAIN`, `NOT_CONTAIN`, `CONTAIN_ANY`, `CONTAIN_ALL`,
+  `NOT_CONTAIN_ANY`, `IS_EMPTY`, `GREATER_THAN` or `LESS_THAN`.
+- `values` is always a slice.
+
+Conditions on different fields must all match.
 
 ```go
 page, err := client.Segments.List(&openapi.ListSegmentsParams{Search: "vip", Sort: "-count"})
@@ -301,7 +494,7 @@ segment, err = client.Segments.Create(&openapi.CreateSegmentRequest{
     Name: "VIP buyers",
     Filters: []map[string]any{
         {"field": "labels", "type": "LIST", "operator": "CONTAIN_ANY", "values": []string{"vip", "cold-leads"}},
-        {"field": "firstname", "type": "TEXT", "operator": "CONTAIN", "values": []string{""}},
+        {"field": "firstname", "type": "TEXT", "operator": "CONTAIN", "values": []string{"a"}},
     },
 })
 
@@ -310,56 +503,17 @@ segment, err = client.Segments.Update("segment-id", &openapi.UpdateSegmentReques
 err = client.Segments.Delete("segment-id")
 
 // Live count of the active contacts a campaign to this segment would reach.
+// Segment.Count is a cached value and may be stale.
 count, err := client.Segments.RecipientsCount("segment-id")
 ```
 
-### Analytics
+### Labels
 
 ```go
-summary, err := client.Analytics.Summary(&openapi.AnalyticsSummaryParams{
-    From: "2026-08-01",
-    To:   "2026-08-31",
-})
-
-breakdown, err := client.Analytics.SummaryBreakdown(&openapi.AnalyticsSummaryParams{
-    From: "2026-08-01", To: "2026-08-31", GroupBy: "sender",
-})
-
-detail, err := client.Analytics.Transmission("transmission-id")
-events, err := client.Analytics.TransmissionEvents("transmission-id")
-```
-
-### Errors and timeouts
-
-Open API failures come back as `*openapi.Error`, carrying the HTTP status plus the API's own
-`error` code and `message`:
-
-```go
-var apiErr *openapi.Error
-if errors.As(err, &apiErr) {
-    log.Printf("status=%d code=%s message=%s", apiErr.StatusCode, apiErr.Code, apiErr.Message)
-}
-```
-
-Open API requests time out after 30 seconds by default; override with
-`layang.WithOpenAPITimeout(d)`.
-
-### API Keys
-
-Manages the Mailtarget API keys used for sending. These calls authenticate with the Open API secret
-key, while the keys they return are the sending credentials.
-
-```go
-page, err := client.APIKeys.List(&openapi.ListAPIKeysParams{Page: 1, PerPage: 10})
-key, err := client.APIKeys.Get(7)
-key, err = client.APIKeys.Create(&openapi.CreateAPIKeyRequest{
-    Name: "ci", PermissionIDs: []int{1, 2},
-})
-// PermissionIDs is required and must be non-empty on create and update.
-key, err = client.APIKeys.Update(7, &openapi.UpdateAPIKeyRequest{
-    Name: "renamed", PermissionIDs: []int{1, 2},
-})
-err = client.APIKeys.Delete(7)
+page, err := client.Labels.List(&openapi.ListLabelsParams{Search: "vip"})
+label, err := client.Labels.Create("newsletter")
+label, err = client.Labels.Rename("newsletter", "monthly-newsletter")
+err = client.Labels.Delete("vip", "cold-lead")
 ```
 
 ### Campaigns
@@ -370,44 +524,41 @@ campaign, err := client.Campaigns.Get("campaign-id")
 
 campaign, err = client.Campaigns.Create(&openapi.CampaignRequest{
     Subject:    "Monthly newsletter",
-    Sender:     &openapi.CampaignSender{Email: "no-reply@example.com"},
+    Sender:     &openapi.CampaignSender{Email: "news@example.com"},
     Recipients: &openapi.CampaignRecipients{Labels: []string{"vip"}},
 })
 campaign, err = client.Campaigns.Update("campaign-id", &openapi.CampaignRequest{Subject: "Updated"})
 err = client.Campaigns.Delete("campaign-id")
 
-stats, err := client.Campaigns.Analytics("campaign-id")
+err = client.Campaigns.SendTest("campaign-id", "qa@example.com")
+err = client.Campaigns.Send("campaign-id")
+campaign, err = client.Campaigns.SetSchedule("campaign-id", "2026-10-01T09:00:00+07:00")
+err = client.Campaigns.CancelSchedule("campaign-id")
 
+stats, err := client.Campaigns.Analytics("campaign-id")
 // Status is required: delivered, opened, clicked, bounced or complained.
 recipients, err := client.Campaigns.Recipients("campaign-id", &openapi.ListCampaignRecipientsParams{
     Status: "opened", Page: 1,
 })
-
-err = client.Campaigns.Send("campaign-id")
-err = client.Campaigns.SendTest("campaign-id", "qa@example.com")
-
-// Schedule instead of sending now; the due date is required.
-campaign, err = client.Campaigns.SetSchedule("campaign-id", "2026-10-01 09:00")
-err = client.Campaigns.CancelSchedule("campaign-id")
 ```
 
 ### Templates
 
 ```go
-page, err := client.Templates.List(&openapi.ListTemplatesParams{Search: "Welcome", EmailType: "regular"})
+// Type "team" (the default) lists your company's templates; "default" lists
+// Mailtarget's published ones.
+page, err := client.Templates.List(&openapi.ListTemplatesParams{Search: "Welcome", Type: "default"})
 template, err := client.Templates.Get("template-id") // includes Content, Body and CSS
 ```
 
 ### Senders and sending domains
 
 ```go
-// Senders is not paginated; it returns every identity.
-senders, err := client.Senders.List()
+senders, err := client.Senders.List() // not paginated
 sender, err := client.Senders.Get("sender-id")
 sender, err = client.Senders.Create(&openapi.SenderRequest{Email: "no-reply@example.com", Name: "No reply"})
 sender, err = client.Senders.Update("sender-id", &openapi.SenderRequest{Name: "Renamed"})
 err = client.Senders.Delete("sender-id")
-
 status, err := client.Senders.CheckDomain("no-reply@example.com")
 
 domains, err := client.SendingDomains.List(nil)
@@ -415,20 +566,20 @@ domain, err := client.SendingDomains.Get(5)
 domain, err = client.SendingDomains.VerifyTXT(5)
 ```
 
-### Labels
-
-```go
-page, err := client.Labels.List(&openapi.ListLabelsParams{Search: "vip"})
-label, err := client.Labels.Create("newsletter")
-label, err = client.Labels.Rename("newsletter", "monthly-newsletter")
-
-// The endpoint takes the names as one comma separated segment.
-err = client.Labels.Delete("vip", "cold-lead")
-```
-
 ### Suppressions
 
-Suppressed addresses no longer receive email.
+Email, Type and Source are required to create a suppression. Neither is checked against a fixed
+enum: Type is a free-form label of your own choosing (max 255 characters), and so is Source,
+*except* for the values below, which decide where the row also gets listed.
+
+| `Source` | Also listed under |
+|---|---|
+| `"Bounce Rule"` | `Bounces` |
+| `"List Unsubscribe"` | `Unsubscribes` |
+| `"Link Unsubscribe"` | `Unsubscribes` |
+| anything else, e.g. `"Manual"` | `List` only |
+
+Source is matched exact and case-sensitive.
 
 ```go
 page, err := client.Suppressions.List(&openapi.ListSuppressionsParams{
@@ -440,12 +591,9 @@ unsubscribes, err := client.Suppressions.Unsubscribes(nil)
 // One address can be suppressed per sub-account plus account-wide, so this is a list.
 found, err := client.Suppressions.Lookup(&openapi.LookupSuppressionsParams{Email: "recipient@example.com"})
 
-// Email, Type and Source are required; Type and Source are free-form (max 255
-// characters). Only Source changes where the row shows up: "Bounce Rule" puts it
-// under Bounces, "List Unsubscribe" or "Link Unsubscribe" under Unsubscribes.
 // Leave SubAccountID zero to suppress account-wide.
 sup, err := client.Suppressions.Create(&openapi.CreateSuppressionRequest{
-    Email: "recipient@example.com", Type: "Non-transactional", Source: "Manual",
+    Email: "recipient@example.com", Type: "Manual block", Source: "Manual",
 })
 err = client.Suppressions.Delete(sup.ID)
 ```
@@ -453,13 +601,14 @@ err = client.Suppressions.Delete(sup.ID)
 ### Webhooks
 
 ```go
-// The catalog of event types; their IDs go into EventIDs.
-events, err := client.WebhookEvents.List(nil)
+events, err := client.WebhookEvents.List(nil) // the catalog of event types
 event, err := client.WebhookEvents.Get(1)
 
 page, err := client.Webhooks.List(&openapi.ListWebhooksParams{Search: "crm"})
 hook, err := client.Webhooks.Get(5)
 
+// TargetURL must be a public http(s) URL. With WebhookAuthBasic set Username
+// and Password; with WebhookAuthOAuth set ClientID, ClientSecret and TokenURL.
 hook, err = client.Webhooks.Create(&openapi.CreateWebhookRequest{
     Name:             "crm",
     TargetURL:        "https://crm.example.com/hook",
@@ -477,55 +626,66 @@ hook, err = client.Webhooks.Update(5, &openapi.UpdateWebhookRequest{
 err = client.Webhooks.Delete(5)
 ```
 
-### Settings, usage and sub-accounts
+### Analytics
+
+Dates are `YYYY-MM-DD`, and both ends are required.
 
 ```go
-company, err := client.Settings.Company()
-profile, err := client.Settings.Profile()
-
-// Quota fields are 0 on plans without a fixed monthly quota; that does not block sending.
-usage, err := client.Usage.Get()
-
-// Note: this endpoint spells the page size "size", not "perPage".
-page, err := client.SubAccounts.List(&openapi.ListSubAccountsParams{Page: 1, Size: 25})
-sub, err := client.SubAccounts.Get(3)
-sub, err = client.SubAccounts.Create(&openapi.CreateSubAccountRequest{Name: "sales"})
-sub, err = client.SubAccounts.Update(3, &openapi.UpdateSubAccountRequest{Status: "Suspended"})
+summary, err := client.Analytics.Summary(&openapi.AnalyticsSummaryParams{From: "2026-08-01", To: "2026-08-31"})
+breakdown, err := client.Analytics.SummaryBreakdown(&openapi.AnalyticsSummaryParams{
+    From: "2026-08-01", To: "2026-08-31", GroupBy: "sender",
+})
+detail, err := client.Analytics.Transmission("transmission-id")
+events, err := client.Analytics.TransmissionEvents("transmission-id")
 ```
 
-### Transmissions (Open API)
+### API keys, sub-accounts, settings and usage
 
-The Open API has its own send endpoint. **Prefer `client.Send` / `Layang.Send`** for sending email:
-it needs only the Mailtarget API key, while this one also requires the Open API secret key. This is
-here so the SDK covers the whole Open API surface.
+API key calls authenticate with the Open API secret key; the keys they manage are sending keys.
 
-The endpoint carries the Mailtarget API key in its body rather than the header; the SDK fills that
-in from the key the client was built with, so you never pass it twice.
+```go
+keys, err := client.APIKeys.List(&openapi.ListAPIKeysParams{Page: 1, PerPage: 10})
+key, err := client.APIKeys.Get(7)
+// PermissionIDs is required and must be non-empty on create and update.
+key, err = client.APIKeys.Create(&openapi.CreateAPIKeyRequest{Name: "ci", PermissionIDs: []int{1, 2}})
+key, err = client.APIKeys.Update(7, &openapi.UpdateAPIKeyRequest{Name: "renamed", PermissionIDs: []int{1, 2}})
+err = client.APIKeys.Delete(7)
+
+subs, err := client.SubAccounts.List(&openapi.ListSubAccountsParams{Page: 1, Size: 25})
+sub, err := client.SubAccounts.Get(3) // includes its API keys and domains
+sub, err = client.SubAccounts.Create(&openapi.CreateSubAccountRequest{Name: "sales"})
+sub, err = client.SubAccounts.Update(3, &openapi.UpdateSubAccountRequest{Status: "Suspended"}) // or "Active"
+
+company, err := client.Settings.Company()
+profile, err := client.Settings.Profile()
+usage, err := client.Usage.Get()
+```
+
+### Transmissions
+
+The Open API's own send endpoint. It needs the Open API secret key as well as the API key, so
+prefer `client.Send` unless you need a stored template or substitution data. The SDK fills in the
+API key the client was built with.
 
 ```go
 result, err := client.Transmissions.Send(&openapi.SendEmailRequest{
-    From:    &openapi.Address{Email: "no-reply@example.com", Name: "No reply"},
-    Subject: "Hello",
-    To:      []openapi.Address{{Email: "recipient@example.com"}},
-    BodyHTML: "<p>Hello</p>",
+    From:             &openapi.Address{Email: "no-reply@example.com", Name: "No reply"},
+    Subject:          "Your order",
+    To:               []openapi.Address{{Email: "recipient@example.com"}},
+    TemplateID:       "template-id",
+    SubstitutionData: map[string]string{"orderId": "A-1001"},
 })
 fmt.Println(result.TransmissionID)
 ```
 
-### Available resources
+## Known limitations
 
-All Open API resources are implemented: **Contacts**, **Segments**, **Analytics**, **API Keys**,
-**Campaigns**, **Senders**, **Sending Domains**, **Labels**, **Suppressions**, **Webhooks**,
-**Webhook Events**, **Settings**, **Usage**, **Sub Accounts**, **Templates** and **Transmissions**.
+- Label names containing a comma cannot be deleted with `Labels.Delete` or used in an import,
+  because those endpoints take labels as a comma separated list.
+- The `IS_NOT_EMPTY` filter operator currently fails with HTTP 502 on every field; avoid it.
+- Campaign recipients can only be selected by label.
+- `Contacts.Export` returns HTTP 404 past the last page, which is how you know the export is done.
 
-### Adding a new Open API resource
+## License
 
-The layout is designed so a new resource stays a local change:
-
-1. Add `openapi/<resource>.go` with its models and a `<Resource>Service` whose methods call the
-   shared helpers (`object`, `objects`, `paged`, `bare`) or `c.do` directly.
-2. Add one field for the service on `openapi.Client` and wire it in `New`.
-3. Add `openapi/<resource>_test.go`.
-
-Nothing in the root package changes, and the secret key guard applies automatically because every
-call goes through `Client.do`.
+GNU General Public License v3.0. See [LICENSE](LICENSE).
