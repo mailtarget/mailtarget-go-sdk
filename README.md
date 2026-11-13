@@ -198,6 +198,7 @@ Each secret key is granted scopes. A call outside them is refused with HTTP 403.
 | Resource | Read scope | Write scope |
 |---|---|---|
 | Contacts, contact imports, Segments | `contacts.read` | `contacts.write` |
+| Forms | `forms.read` | `forms.write` |
 | Campaigns | `campaigns.read` | `campaigns.write` |
 | Templates | `campaigns.read` | — |
 | Analytics | `analytics.read` | — |
@@ -205,9 +206,10 @@ Each secret key is granted scopes. A call outside them is refused with HTTP 403.
 | Usage | `settings.read` | — |
 | Suppressions | `suppressions.read` | `suppressions.write` |
 | Webhooks, Webhook Events | `webhooks.read` | `webhooks.write` |
-| Transmissions | — | `transmissions.write` |
+| Transmissions, `KeyInfo.CheckTransmissionKey` | — | `transmissions.write` |
 
-The API documents no scope for Senders, Sending Domains, Labels and Settings.
+The API documents no scope for Senders, Sending Domains, Labels and Settings. `KeyInfo.Get` needs
+no scope.
 
 ### Errors
 
@@ -226,11 +228,22 @@ case errors.As(err, &configErr):
 case errors.As(err, &apiErr):
     // the API answered with a non-2xx status
     log.Printf("status=%d code=%s message=%s", apiErr.StatusCode, apiErr.Code, apiErr.Message)
+    // apiErr.Details holds the raw `details` JSON when the API sent one.
 default:
     // a required field was missing (checked locally, nothing was sent) or a network error
     log.Print(err)
 }
 ```
+
+Calls whose response is `{"data": true|false}` (`APIKeys.Delete`, `Campaigns.Send`,
+`Campaigns.SendTest`, `Senders.Delete`, `Forms.Delete`, `Forms.Submit`, `Labels.Delete`,
+`Segments.Delete`, `Suppressions.Delete`, `Webhooks.Delete`) treat `data: false` as a failure: they
+return an `*openapi.Error` with `Code` `openapi.ErrCodeOperationFailed` (`"OPERATION_FAILED"`) and
+the HTTP status received, so a `nil` error always means the operation was carried out.
+
+`apiErr.Details` is a `json.RawMessage` with the `details` member some errors carry, for example the
+active imports of a 409 `IMPORT_IN_PROGRESS` or the report of a 422 `IMPORT_VALIDATION_FAILED`.
+Decode it with `json.Unmarshal`; it is `nil` when absent.
 
 Required fields are checked locally before any request. For example, `Contacts.Update` without
 `Email`, `Firstname` and `Labels` returns an error straight away.
@@ -322,8 +335,10 @@ Rules for the file and the import:
 - Only one import can run per account, including imports started from the dashboard. Another one
   is refused with HTTP 409 `IMPORT_IN_PROGRESS`. Check `Contacts.CurrentImport()` first, or cancel
   a job with `Contacts.CancelImport(id)`.
-- Problem rows are listed in `result.Validation`. With `Strict: true`, any problem row rejects the
-  whole file with HTTP 422.
+- Problem rows are listed in `result.Validation`. With `Strict: true`, any problem row other than a
+  `REPLACE_VALUE` replacement rejects the whole file with HTTP 422 `IMPORT_VALIDATION_FAILED`; the
+  report is in `apiErr.Details`.
+- A 409 `IMPORT_IN_PROGRESS` lists the active imports in `apiErr.Details`.
 
 Once the contacts are in, group them with [segments](#segments).
 
@@ -436,6 +451,7 @@ contact, err = client.Contacts.Create(&openapi.CreateContactRequest{
     Email:     "recipient@example.com",
     Firstname: "Sarah",
     Labels:    []string{"vip"},
+    BirthDate: "1990-05-17", // YYYY-MM-DD
 })
 
 // Email, Firstname and Labels are required on update.
@@ -459,6 +475,11 @@ csv, err := client.Contacts.Export(&openapi.ListContactsParams{Page: 1, PerPage:
 
 fields, err := client.Contacts.Fields()
 ```
+
+Birth dates: send `BirthDate` (`YYYY-MM-DD`) on create and update. `DayOfBirth` on the request types
+is deprecated: it is still accepted as `YYYY-MM-DD` for older clients, and `BirthDate` wins when both
+are set. On a returned `Contact`, `BirthDate` is `YYYY-MM-DD` and `DayOfBirth` is a read-only `MM-DD`
+value; do not copy it into a request.
 
 Contact imports:
 
@@ -626,9 +647,52 @@ hook, err = client.Webhooks.Update(5, &openapi.UpdateWebhookRequest{
 err = client.Webhooks.Delete(5)
 ```
 
+### Forms
+
+```go
+page, err := client.Forms.List(&openapi.ListFormsParams{
+    Status: []string{openapi.FormStatusPublished, openapi.FormStatusDraft},
+    Labels: []string{"vip"},
+})
+form, err := client.Forms.Get("form-id") // form.Fields, form.PublicURL, form.EmbedHTML, form.UsedIn
+
+copied, err := client.Forms.Duplicate("form-id") // unpublished "<name> (Duplicate)"
+form, err = client.Forms.Publish("form-id")
+form, err = client.Forms.Unpublish("form-id")
+err = client.Forms.Delete("form-id") // unpublish first; forms used by an automation cannot be deleted
+
+// From and To are Unix milliseconds and must be set together.
+subs, err := client.Forms.Submissions("form-id", &openapi.ListFormSubmissionsParams{
+    From: 1767225600000, To: 1769903999000,
+})
+
+// Keys are form.Fields[i].Name; a MultiValue field takes []string of option names.
+err = client.Forms.Submit("form-id", &openapi.FormSubmissionRequest{Values: map[string]any{
+    "email":     "sarah@example.com",
+    "firstname": "Sarah",
+    "interest":  []string{"Promo", "Newsletter"},
+}})
+```
+
+`Forms.Submit` is server-side only: it needs the Open API secret key, which must never be shipped to
+a browser or mobile app. To collect responses from visitors, show the form itself with `PublicURL`
+or `EmbedHTML`. Submissions are validated against the last published version of the form, and forms
+with captcha or file upload fields are not supported (HTTP 422).
+
+### Key info
+
+```go
+info, err := client.KeyInfo.Get() // info.CompanyID, info.Scopes, ...
+
+// true only when the Transmission API key is valid and belongs to the same company.
+// An invalid key and another company's key both return false.
+ok, err := client.KeyInfo.CheckTransmissionKey(apiKey)
+```
+
 ### Analytics
 
-Dates are `YYYY-MM-DD`, and both ends are required.
+Dates are `YYYY-MM-DD`, and both ends are required. `GroupBy` is used by `SummaryBreakdown` only;
+`Summary` never sends it.
 
 ```go
 summary, err := client.Analytics.Summary(&openapi.AnalyticsSummaryParams{From: "2026-08-01", To: "2026-08-31"})

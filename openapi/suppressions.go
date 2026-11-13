@@ -191,8 +191,11 @@ func (s *SuppressionsService) Create(req *CreateSuppressionRequest) (*Suppressio
 }
 
 // Delete removes a suppression so the address can receive email again.
+//
+// The API answering `data: false` is reported as an *Error with Code
+// ErrCodeOperationFailed.
 func (s *SuppressionsService) Delete(id int) error {
-	return s.c.do(request{
+	return confirm(s.c, request{
 		capability: "Suppressions.Delete",
 		method:     http.MethodDelete,
 		path:       "/suppressions/" + strconv.Itoa(id),

@@ -124,6 +124,33 @@ func TestContactsService_Update(t *testing.T) {
 	assert.Equal(t, "vip", contact.Note)
 }
 
+func TestContactsService_BirthDate(t *testing.T) {
+	c := withSecret(t)
+
+	var bodies []string
+	respond := func(req *http.Request) (*http.Response, error) {
+		bodies = append(bodies, readBody(t, req))
+		return httpmock.NewStringResponse(200,
+			`{"data":{"id":"abc123","birthDate":"1990-05-17","dayOfBirth":"05-17"}}`), nil
+	}
+	httpmock.RegisterResponder("POST", testBaseURL+"/v1/contacts", respond)
+	httpmock.RegisterResponder("PUT", testBaseURL+"/v1/contacts/abc123", respond)
+
+	created, err := c.Contacts.Create(&CreateContactRequest{Email: "a@b.co", BirthDate: "1990-05-17"})
+	require.NoError(t, err)
+	assert.Equal(t, "1990-05-17", created.BirthDate)
+	assert.Equal(t, "05-17", created.DayOfBirth)
+
+	_, err = c.Contacts.Update("abc123", &UpdateContactRequest{
+		Email: "a@b.co", Firstname: "A", Labels: []string{"vip"}, BirthDate: "1990-05-17",
+	})
+	require.NoError(t, err)
+
+	require.Len(t, bodies, 2)
+	assert.JSONEq(t, `{"email":"a@b.co","birthDate":"1990-05-17"}`, bodies[0])
+	assert.JSONEq(t, `{"email":"a@b.co","firstname":"A","labels":["vip"],"birthDate":"1990-05-17"}`, bodies[1])
+}
+
 // email, firstname and labels are required by the API, so the SDK refuses the
 // call locally.
 func TestContactsService_UpdateRequiresFields(t *testing.T) {

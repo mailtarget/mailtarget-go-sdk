@@ -57,6 +57,8 @@ type Client struct {
 	WebhookEvents  *WebhookEventsService
 	Usage          *UsageService
 	Templates      *TemplatesService
+	Forms          *FormsService
+	KeyInfo        *KeyInfoService
 
 	// Transmissions is the Open API's own send endpoint. Sending through
 	// layang.Layang is preferred: it needs only the Mailtarget API key, while
@@ -141,6 +143,8 @@ func New(opts ...Option) *Client {
 	c.WebhookEvents = &WebhookEventsService{c: c}
 	c.Usage = &UsageService{c: c}
 	c.Templates = &TemplatesService{c: c}
+	c.Forms = &FormsService{c: c}
+	c.KeyInfo = &KeyInfoService{c: c}
 	c.Transmissions = &TransmissionsService{c: c}
 	return c
 }

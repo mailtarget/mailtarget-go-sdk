@@ -49,6 +49,26 @@ func TestAnalyticsService_SummaryPassesOptionalParams(t *testing.T) {
 	assert.Equal(t, "from=2026-08-01&sandbox=true&sandboxSubAccountId=7&to=2026-08-31", gotQuery)
 }
 
+// /analytics/summary has no groupBy, so Summary must not send it even when the
+// shared params carry one.
+func TestAnalyticsService_SummaryNeverSendsGroupBy(t *testing.T) {
+	c := withSecret(t)
+
+	var gotQuery string
+	httpmock.RegisterResponder("GET", testBaseURL+"/v1/analytics/summary",
+		func(req *http.Request) (*http.Response, error) {
+			gotQuery = req.URL.Query().Encode()
+			return httpmock.NewStringResponse(200, `{"data":{}}`), nil
+		})
+
+	_, err := c.Analytics.Summary(&AnalyticsSummaryParams{
+		From: "2026-08-01", To: "2026-08-31", GroupBy: "sender",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "from=2026-08-01&to=2026-08-31", gotQuery)
+}
+
 // from/to are required by the API, so the SDK rejects the call locally.
 func TestAnalyticsService_SummaryRequiresDateRange(t *testing.T) {
 	c := withSecret(t)

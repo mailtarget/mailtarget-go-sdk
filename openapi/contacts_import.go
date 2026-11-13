@@ -125,7 +125,9 @@ type ImportContactsRequest struct {
 	Labels []string
 	// ImportMode defaults to ImportModeReplaceAll server side.
 	ImportMode string
-	// Strict rejects the whole file when any row has a validation issue.
+	// Strict rejects the whole file (422 IMPORT_VALIDATION_FAILED, with the
+	// per-row report in Error.Details) when any row has a problem other than
+	// a REPLACE_VALUE replacement; replacements alone do not reject it.
 	Strict bool
 }
 

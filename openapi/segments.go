@@ -160,8 +160,11 @@ func (s *SegmentsService) Update(id string, req *UpdateSegmentRequest) (*Segment
 
 // Delete permanently removes a segment and untags every contact tagged with
 // it.
+//
+// The API answering `data: false` is reported as an *Error with Code
+// ErrCodeOperationFailed.
 func (s *SegmentsService) Delete(id string) error {
-	return s.c.do(request{
+	return confirm(s.c, request{
 		capability: "Segments.Delete",
 		method:     http.MethodDelete,
 		path:       "/segments/" + url.PathEscape(id),
