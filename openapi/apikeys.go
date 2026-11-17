@@ -160,8 +160,11 @@ func (s *APIKeysService) Update(id int, req *UpdateAPIKeyRequest) (*APIKeyDetail
 }
 
 // Delete revokes an API key immediately.
+//
+// The API answering `data: false` is reported as an *Error with Code
+// ErrCodeOperationFailed.
 func (s *APIKeysService) Delete(id int) error {
-	return s.c.do(request{
+	return confirm(s.c, request{
 		capability: "APIKeys.Delete",
 		method:     http.MethodDelete,
 		path:       "/api-keys/" + strconv.Itoa(id),

@@ -20,17 +20,22 @@ type SubscribeSource struct {
 
 // Contact is a contact record.
 type Contact struct {
-	ID                string           `json:"id"`
-	Email             string           `json:"email"`
-	Name              string           `json:"name"`
-	Firstname         string           `json:"firstname"`
-	Lastname          string           `json:"lastname"`
-	Phone             string           `json:"phone"`
-	Company           string           `json:"company"`
-	City              string           `json:"city"`
-	Country           string           `json:"country"`
-	Gender            string           `json:"gender"`
-	BirthDate         string           `json:"birthDate"`
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
+	Phone     string `json:"phone"`
+	Company   string `json:"company"`
+	City      string `json:"city"`
+	Country   string `json:"country"`
+	Gender    string `json:"gender"`
+	// BirthDate is the birth date as YYYY-MM-DD, in the account's timezone
+	// (Asia/Jakarta); empty when the contact has none.
+	BirthDate string `json:"birthDate"`
+	// DayOfBirth is the read-only MM-DD part of the birth date, kept for
+	// birthday matching. Do not copy it into a request: to change the birth
+	// date, send BirthDate.
 	DayOfBirth        string           `json:"dayOfBirth"`
 	Note              string           `json:"note"`
 	State             string           `json:"state"`
@@ -54,15 +59,19 @@ type Contact struct {
 // Unset fields are omitted so a partially filled request never blanks out
 // server side values.
 type CreateContactRequest struct {
-	Email             string           `json:"email"`
-	Name              string           `json:"name,omitempty"`
-	Firstname         string           `json:"firstname,omitempty"`
-	Lastname          string           `json:"lastname,omitempty"`
-	Phone             string           `json:"phone,omitempty"`
-	Company           string           `json:"company,omitempty"`
-	City              string           `json:"city,omitempty"`
-	Country           string           `json:"country,omitempty"`
-	Gender            string           `json:"gender,omitempty"`
+	Email     string `json:"email"`
+	Name      string `json:"name,omitempty"`
+	Firstname string `json:"firstname,omitempty"`
+	Lastname  string `json:"lastname,omitempty"`
+	Phone     string `json:"phone,omitempty"`
+	Company   string `json:"company,omitempty"`
+	City      string `json:"city,omitempty"`
+	Country   string `json:"country,omitempty"`
+	Gender    string `json:"gender,omitempty"`
+	// BirthDate is the birth date, YYYY-MM-DD.
+	BirthDate string `json:"birthDate,omitempty"`
+	// Deprecated: DayOfBirth is accepted as the birth date (YYYY-MM-DD) for
+	// older clients; BirthDate wins when both are set. Use BirthDate.
 	DayOfBirth        string           `json:"dayOfBirth,omitempty"`
 	Note              string           `json:"note,omitempty"`
 	State             string           `json:"state,omitempty"`
@@ -84,15 +93,20 @@ type CreateContactRequest struct {
 // UpdateContactRequest is the payload of Update. Email, Firstname and Labels
 // are required by the API; the other fields are sent only when set.
 type UpdateContactRequest struct {
-	Email       string         `json:"email"`
-	Firstname   string         `json:"firstname"`
-	Labels      []string       `json:"labels"`
-	Lastname    string         `json:"lastname,omitempty"`
-	Phone       string         `json:"phone,omitempty"`
-	Company     string         `json:"company,omitempty"`
-	City        string         `json:"city,omitempty"`
-	Country     string         `json:"country,omitempty"`
-	Gender      string         `json:"gender,omitempty"`
+	Email     string   `json:"email"`
+	Firstname string   `json:"firstname"`
+	Labels    []string `json:"labels"`
+	Lastname  string   `json:"lastname,omitempty"`
+	Phone     string   `json:"phone,omitempty"`
+	Company   string   `json:"company,omitempty"`
+	City      string   `json:"city,omitempty"`
+	Country   string   `json:"country,omitempty"`
+	Gender    string   `json:"gender,omitempty"`
+	// BirthDate sets the birth date, YYYY-MM-DD. Leaving it empty keeps the
+	// current one; a birth date cannot be cleared.
+	BirthDate string `json:"birthDate,omitempty"`
+	// Deprecated: DayOfBirth is accepted as the birth date (YYYY-MM-DD) for
+	// older clients; BirthDate wins when both are set. Use BirthDate.
 	DayOfBirth  string         `json:"dayOfBirth,omitempty"`
 	Note        string         `json:"note,omitempty"`
 	CustomField map[string]any `json:"customField,omitempty"`

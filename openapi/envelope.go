@@ -24,8 +24,10 @@ type dataEnvelope struct {
 	Meta *Meta           `json:"meta,omitempty"`
 }
 
-// errorEnvelope matches dto.ErrorEnvelope from the Open API spec.
+// errorEnvelope matches dto.ErrorEnvelope from the Open API spec, plus the
+// optional `details` member of dto.ContactImportErrorEnvelope.
 type errorEnvelope struct {
-	Error   string `json:"error"`
-	Message string `json:"message"`
+	Error   string          `json:"error"`
+	Message string          `json:"message"`
+	Details json.RawMessage `json:"details,omitempty"`
 }

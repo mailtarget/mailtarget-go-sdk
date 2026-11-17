@@ -237,8 +237,11 @@ func (s *CampaignsService) Recipients(id string, params *ListCampaignRecipientsP
 }
 
 // Send triggers immediate sending of a campaign.
+//
+// The API answering `data: false` is reported as an *Error with Code
+// ErrCodeOperationFailed.
 func (s *CampaignsService) Send(id string) error {
-	return s.c.do(request{
+	return confirm(s.c, request{
 		capability: "Campaigns.Send",
 		method:     http.MethodPost,
 		path:       "/campaigns/" + url.PathEscape(id) + "/send",
@@ -246,8 +249,11 @@ func (s *CampaignsService) Send(id string) error {
 }
 
 // SendTest sends a campaign preview to a single address.
+//
+// The API answering `data: false` is reported as an *Error with Code
+// ErrCodeOperationFailed.
 func (s *CampaignsService) SendTest(id, recipient string) error {
-	return s.c.do(request{
+	return confirm(s.c, request{
 		capability: "Campaigns.SendTest",
 		method:     http.MethodPost,
 		path:       "/campaigns/" + url.PathEscape(id) + "/send-test",

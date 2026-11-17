@@ -150,3 +150,81 @@ func TestBare_DecodesWholeBody(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 17, out.Count)
 }
+
+// dto.ContactImportErrorEnvelope adds an untyped `details` member, which is
+// kept verbatim on the error.
+func TestDo_KeepsErrorDetails(t *testing.T) {
+	c := withSecret(t)
+	httpmock.RegisterResponder("POST", testBaseURL+"/v1/contacts/import",
+		httpmock.NewStringResponder(409, `{"error":"IMPORT_IN_PROGRESS","message":"an import is running",
+			"details":{"imports":[{"id":"imp1","state":"RUNNING"}]}}`))
+
+	err := c.do(request{capability: "Contacts.Import", method: http.MethodPost, path: "/contacts/import"})
+
+	var apiErr *Error
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, "IMPORT_IN_PROGRESS", apiErr.Code)
+	assert.Equal(t, "an import is running", apiErr.Message)
+	assert.JSONEq(t, `{"imports":[{"id":"imp1","state":"RUNNING"}]}`, string(apiErr.Details))
+}
+
+func TestDo_ErrorWithoutDetailsLeavesThemNil(t *testing.T) {
+	c := withSecret(t)
+	httpmock.RegisterResponder("GET", testBaseURL+"/v1/things",
+		httpmock.NewStringResponder(404, `{"error":"not_found","message":"nope","details":null}`))
+
+	err := c.do(request{capability: "Things.Get", method: http.MethodGet, path: "/things"})
+
+	var apiErr *Error
+	require.ErrorAs(t, err, &apiErr)
+	assert.Nil(t, apiErr.Details)
+}
+
+// Every dto.BoolEnvelope operation must turn `data: false` into an
+// OPERATION_FAILED error carrying the HTTP status, and accept `data: true`.
+func TestBoolEnvelopeOperations_DataFalseFails(t *testing.T) {
+	type op struct {
+		method, path string
+		call         func(c *Client) error
+	}
+	ops := map[string]op{
+		"APIKeys.Delete":      {"DELETE", "/v1/api-keys/7", func(c *Client) error { return c.APIKeys.Delete(7) }},
+		"Campaigns.Send":      {"POST", "/v1/campaigns/cmp1/send", func(c *Client) error { return c.Campaigns.Send("cmp1") }},
+		"Campaigns.SendTest":  {"POST", "/v1/campaigns/cmp1/send-test", func(c *Client) error { return c.Campaigns.SendTest("cmp1", "a@b.co") }},
+		"Senders.Delete":      {"DELETE", "/v1/domain/senders/snd1", func(c *Client) error { return c.Senders.Delete("snd1") }},
+		"Forms.Delete":        {"DELETE", "/v1/forms/f1", func(c *Client) error { return c.Forms.Delete("f1") }},
+		"Forms.Submit":        {"POST", "/v1/forms/f1/submissions", func(c *Client) error { return c.Forms.Submit("f1", &FormSubmissionRequest{Values: map[string]any{}}) }},
+		"Labels.Delete":       {"DELETE", "/v1/labels/vip", func(c *Client) error { return c.Labels.Delete("vip") }},
+		"Segments.Delete":     {"DELETE", "/v1/segments/sg1", func(c *Client) error { return c.Segments.Delete("sg1") }},
+		"Suppressions.Delete": {"DELETE", "/v1/suppressions/11", func(c *Client) error { return c.Suppressions.Delete(11) }},
+		"Webhooks.Delete":     {"DELETE", "/v1/webhooks/6", func(c *Client) error { return c.Webhooks.Delete(6) }},
+	}
+	for name, o := range ops {
+		t.Run(name, func(t *testing.T) {
+			c := withSecret(t)
+			httpmock.RegisterResponder(o.method, testBaseURL+o.path,
+				httpmock.NewStringResponder(200, `{"data":false}`))
+
+			err := o.call(c)
+
+			var apiErr *Error
+			require.ErrorAs(t, err, &apiErr)
+			assert.Equal(t, ErrCodeOperationFailed, apiErr.Code)
+			assert.Equal(t, 200, apiErr.StatusCode)
+			assert.Equal(t, name+" returned data=false", apiErr.Message)
+
+			httpmock.RegisterResponder(o.method, testBaseURL+o.path,
+				httpmock.NewStringResponder(200, `{"data":true}`))
+			assert.NoError(t, o.call(c))
+		})
+	}
+}
+
+// A body without `data` keeps the pre-existing lenient behavior.
+func TestConfirm_MissingDataIsSuccess(t *testing.T) {
+	c := withSecret(t)
+	httpmock.RegisterResponder("DELETE", testBaseURL+"/v1/things/1",
+		httpmock.NewStringResponder(200, `{}`))
+
+	assert.NoError(t, confirm(c, request{capability: "Things.Delete", method: http.MethodDelete, path: "/things/1"}))
+}

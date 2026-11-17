@@ -83,6 +83,9 @@ func (s *LabelsService) Rename(oldName, newName string) (*Label, error) {
 // Delete removes one or more labels by name. The endpoint takes them as a
 // single comma separated path segment, so a name containing a comma cannot be
 // addressed.
+//
+// The API answering `data: false` is reported as an *Error with Code
+// ErrCodeOperationFailed.
 func (s *LabelsService) Delete(names ...string) error {
 	if len(names) == 0 {
 		return errors.New("labels delete requires at least one label name")
@@ -94,7 +97,7 @@ func (s *LabelsService) Delete(names ...string) error {
 		}
 		escaped = append(escaped, url.PathEscape(name))
 	}
-	return s.c.do(request{
+	return confirm(s.c, request{
 		capability: "Labels.Delete",
 		method:     http.MethodDelete,
 		path:       "/labels/" + strings.Join(escaped, ","),

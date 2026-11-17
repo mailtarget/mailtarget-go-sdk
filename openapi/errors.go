@@ -1,6 +1,14 @@
 package openapi
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// ErrCodeOperationFailed is the Error.Code reported when a call that answers
+// with {"data": true|false} gets `data: false` back, i.e. the API accepted the
+// request but did not carry out the operation.
+const ErrCodeOperationFailed = "OPERATION_FAILED"
 
 // Error reports a non-2xx response from the Open API.
 type Error struct {
@@ -10,6 +18,11 @@ type Error struct {
 	Code string
 	// Message is the human readable `message` field of the response body.
 	Message string
+	// Details is the raw, untyped `details` member of the response body, when
+	// the API sent one, e.g. the active imports of a 409 IMPORT_IN_PROGRESS or
+	// the report of a 422 IMPORT_VALIDATION_FAILED. Decode it with
+	// json.Unmarshal into the shape you expect. It is nil when absent.
+	Details json.RawMessage
 }
 
 func (e *Error) Error() string {

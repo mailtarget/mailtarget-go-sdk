@@ -85,7 +85,8 @@ type AnalyticsSummaryParams struct {
 	// To is the inclusive end date, formatted YYYY-MM-DD.
 	To string
 	// GroupBy selects the breakdown dimension, e.g. "sender" or "domain". Only
-	// SummaryBreakdown uses it.
+	// SummaryBreakdown uses it; Summary never sends it, since
+	// /analytics/summary has no groupBy parameter.
 	GroupBy string
 	// Sandbox includes sandbox traffic in the result.
 	Sandbox bool
@@ -119,16 +120,19 @@ func (p *AnalyticsSummaryParams) validate() error {
 	return nil
 }
 
-// Summary returns aggregated analytics for a date range.
+// Summary returns aggregated analytics for a date range. params.GroupBy is
+// ignored and never sent.
 func (s *AnalyticsService) Summary(params *AnalyticsSummaryParams) (*AnalyticsSummary, error) {
 	if err := params.validate(); err != nil {
 		return nil, err
 	}
+	query := params.values()
+	query.Del("groupBy")
 	return object[AnalyticsSummary](s.c, request{
 		capability: "Analytics.Summary",
 		method:     http.MethodGet,
 		path:       "/analytics/summary",
-		query:      params.values(),
+		query:      query,
 	})
 }
 

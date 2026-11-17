@@ -30,6 +30,10 @@ type request struct {
 	// such as the CSV contact export.
 	rawBytes *[]byte
 
+	// status receives the HTTP status code of a successful response, for
+	// helpers that report it in an error built after decoding.
+	status *int
+
 	// accept overrides the default "application/json" Accept header.
 	accept string
 
@@ -96,6 +100,9 @@ func (c *Client) do(req request) error {
 		if len(body) > 0 && json.Unmarshal(body, &env) == nil {
 			apiErr.Code = env.Error
 			apiErr.Message = env.Message
+			if len(env.Details) > 0 && string(env.Details) != "null" {
+				apiErr.Details = env.Details
+			}
 		}
 		if apiErr.Message == "" {
 			apiErr.Message = resp.Status()
@@ -103,6 +110,9 @@ func (c *Client) do(req request) error {
 		return apiErr
 	}
 
+	if req.status != nil {
+		*req.status = resp.StatusCode()
+	}
 	if req.rawBytes != nil {
 		*req.rawBytes = body
 		return nil
@@ -132,7 +142,7 @@ func (c *Client) do(req request) error {
 	return nil
 }
 
-// The helpers below cover the four response shapes the Open API uses, so a
+// The helpers below cover the five response shapes the Open API uses, so a
 // resource method is a single call instead of a decode-and-assemble block.
 // They are package level functions because Go methods cannot take type
 // parameters.
@@ -178,4 +188,27 @@ func bare[T any](c *Client, req request) (*T, error) {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// confirm runs a call that answers with dto.BoolEnvelope ({"data": bool}) and
+// turns `data: false` into an *Error with Code ErrCodeOperationFailed and the
+// HTTP status received, so callers only have to check the returned error. A
+// response without a `data` member (or with `data: null`) is treated as
+// success, matching how these calls behaved before the check existed.
+func confirm(c *Client, req request) error {
+	var ok *bool
+	var status int
+	req.result = &ok
+	req.status = &status
+	if err := c.do(req); err != nil {
+		return err
+	}
+	if ok != nil && !*ok {
+		return &Error{
+			StatusCode: status,
+			Code:       ErrCodeOperationFailed,
+			Message:    req.capability + " returned data=false",
+		}
+	}
+	return nil
 }

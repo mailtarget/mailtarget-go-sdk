@@ -193,8 +193,11 @@ func (s *WebhooksService) Update(id int, req *UpdateWebhookRequest) (*Webhook, e
 }
 
 // Delete permanently removes a webhook.
+//
+// The API answering `data: false` is reported as an *Error with Code
+// ErrCodeOperationFailed.
 func (s *WebhooksService) Delete(id int) error {
-	return s.c.do(request{
+	return confirm(s.c, request{
 		capability: "Webhooks.Delete",
 		method:     http.MethodDelete,
 		path:       "/webhooks/" + strconv.Itoa(id),
