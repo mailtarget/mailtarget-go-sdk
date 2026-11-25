@@ -4,8 +4,8 @@ The official Go SDK for [Mailtarget](https://mailtarget.co). It covers two thing
 
 - **Sending email** through Layang, Mailtarget's transactional sending API.
 - **Managing your account** through the Mailtarget Open API: contacts, segments, campaigns,
-  templates, senders and domains, suppressions, webhooks, analytics, sub-accounts, API keys and
-  usage.
+  templates, forms, landing pages, senders and domains, suppressions, webhooks, analytics,
+  sub-accounts, API keys and usage.
 
 Each capability uses its own credential, and you can use sending on its own.
 
@@ -199,6 +199,7 @@ Each secret key is granted scopes. A call outside them is refused with HTTP 403.
 |---|---|---|
 | Contacts, contact imports, Segments | `contacts.read` | `contacts.write` |
 | Forms | `forms.read` | `forms.write` |
+| Pages | `pages.read` | `pages.write` |
 | Campaigns | `campaigns.read` | `campaigns.write` |
 | Templates | `campaigns.read` | — |
 | Analytics | `analytics.read` | — |
@@ -236,8 +237,8 @@ default:
 ```
 
 Calls whose response is `{"data": true|false}` (`APIKeys.Delete`, `Campaigns.Send`,
-`Campaigns.SendTest`, `Senders.Delete`, `Forms.Delete`, `Forms.Submit`, `Labels.Delete`,
-`Segments.Delete`, `Suppressions.Delete`, `Webhooks.Delete`) treat `data: false` as a failure: they
+`Campaigns.SendTest`, `Senders.Delete`, `Forms.Delete`, `Forms.Submit`, `Pages.Delete`,
+`Labels.Delete`, `Segments.Delete`, `Suppressions.Delete`, `Webhooks.Delete`) treat `data: false` as a failure: they
 return an `*openapi.Error` with `Code` `openapi.ErrCodeOperationFailed` (`"OPERATION_FAILED"`) and
 the HTTP status received, so a `nil` error always means the operation was carried out.
 
@@ -678,6 +679,32 @@ err = client.Forms.Submit("form-id", &openapi.FormSubmissionRequest{Values: map[
 a browser or mobile app. To collect responses from visitors, show the form itself with `PublicURL`
 or `EmbedHTML`. Submissions are validated against the last published version of the form, and forms
 with captcha or file upload fields are not supported (HTTP 422).
+
+### Pages
+
+Landing pages. The models are `openapi.LandingPage`, `LandingPageDetail`, `LandingPageForm` and
+`LandingPageFormRef`, so they do not clash with the generic `openapi.Page[T]` returned by list calls.
+
+```go
+page, err := client.Pages.List(&openapi.ListPagesParams{
+    Status:   []string{openapi.PageStatusPublished, openapi.PageStatusDefault},
+    Category: openapi.PageCategoryLanding, // or openapi.PageCategoryThankYou
+    Sort:     openapi.PageSortUpdatedAtDesc, // default: openapi.PageSortCreatedAtDesc
+})
+lp, err := client.Pages.Get("page-id") // lp.URL, lp.Permalink, lp.IsDefault, lp.Forms
+
+// Embedded forms; each ID works with client.Forms (forms.read / forms.write). Not paginated.
+forms, err := client.Pages.Forms("page-id")
+
+copied, err := client.Pages.Duplicate("page-id") // unpublished "<name> (copy)", shares the forms
+lp, err = client.Pages.Publish("page-id")        // a draft counts against the published-page quota (422)
+lp, err = client.Pages.SetDefault("page-id")     // must be published (409); served at the domain root
+lp, err = client.Pages.Unpublish("page-id")      // not the default page (409)
+err = client.Pages.Delete("page-id")             // not the default page (409); embedded forms are kept
+```
+
+`URL` is filled for drafts too but only serves once the page is published; the default page is
+served at the domain root.
 
 ### Key info
 
