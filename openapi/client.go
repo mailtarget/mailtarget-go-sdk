@@ -59,6 +59,7 @@ type Client struct {
 	Templates      *TemplatesService
 	Forms          *FormsService
 	Pages          *PagesService
+	Files          *FilesService
 	KeyInfo        *KeyInfoService
 
 	// Transmissions is the Open API's own send endpoint. Sending through
@@ -146,6 +147,7 @@ func New(opts ...Option) *Client {
 	c.Templates = &TemplatesService{c: c}
 	c.Forms = &FormsService{c: c}
 	c.Pages = &PagesService{c: c}
+	c.Files = &FilesService{c: c}
 	c.KeyInfo = &KeyInfoService{c: c}
 	c.Transmissions = &TransmissionsService{c: c}
 	return c

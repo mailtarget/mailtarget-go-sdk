@@ -195,6 +195,8 @@ func TestBoolEnvelopeOperations_DataFalseFails(t *testing.T) {
 		"Forms.Delete":        {"DELETE", "/v1/forms/f1", func(c *Client) error { return c.Forms.Delete("f1") }},
 		"Forms.Submit":        {"POST", "/v1/forms/f1/submissions", func(c *Client) error { return c.Forms.Submit("f1", &FormSubmissionRequest{Values: map[string]any{}}) }},
 		"Pages.Delete":        {"DELETE", "/v1/pages/p1", func(c *Client) error { return c.Pages.Delete("p1") }},
+		"Files.Delete":        {"DELETE", "/v1/files/f1", func(c *Client) error { return c.Files.Delete("f1") }},
+		"Files.DeleteLabel":   {"DELETE", "/v1/files/labels/Promo", func(c *Client) error { return c.Files.DeleteLabel("Promo") }},
 		"Labels.Delete":       {"DELETE", "/v1/labels/vip", func(c *Client) error { return c.Labels.Delete("vip") }},
 		"Segments.Delete":     {"DELETE", "/v1/segments/sg1", func(c *Client) error { return c.Segments.Delete("sg1") }},
 		"Suppressions.Delete": {"DELETE", "/v1/suppressions/11", func(c *Client) error { return c.Suppressions.Delete(11) }},

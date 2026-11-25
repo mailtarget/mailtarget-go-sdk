@@ -236,7 +236,14 @@ func (s *CampaignsService) Recipients(id string, params *ListCampaignRecipientsP
 	})
 }
 
-// Send triggers immediate sending of a campaign.
+// Send sends a campaign, or activates its schedule. What happens depends on
+// the campaign's send time:
+//   - No schedule (immediate send time): the campaign is sent right away.
+//   - Schedule saved with SetSchedule: the campaign becomes scheduled (READY)
+//     and is sent automatically at its dueDate. This call is required to
+//     activate a schedule; SetSchedule alone does not send anything.
+//
+// To stop an activated schedule, use CancelSchedule.
 //
 // The API answering `data: false` is reported as an *Error with Code
 // ErrCodeOperationFailed.
@@ -261,8 +268,18 @@ func (s *CampaignsService) SendTest(id, recipient string) error {
 	})
 }
 
-// SetSchedule schedules a campaign to send at dueDate and returns the updated
-// campaign.
+// SetSchedule saves a future send time (RFC 3339 dueDate) on a campaign and
+// returns the updated campaign. It only stores the schedule: the campaign
+// stays DRAFT and will NOT be sent at dueDate yet.
+//
+// Scheduling a campaign takes two steps:
+//  1. SetSchedule: save the send time.
+//  2. Send: activate the schedule. The campaign becomes scheduled (READY)
+//     and is sent automatically at dueDate.
+//
+// If step 2 is skipped, nothing is sent. Only the send time (FIX_TIME) and
+// dueDate change; all other campaign fields are kept. To change the time of a
+// schedule that is not activated yet, call SetSchedule again.
 func (s *CampaignsService) SetSchedule(id, dueDate string) (*CampaignDetail, error) {
 	if strings.TrimSpace(dueDate) == "" {
 		return nil, errors.New("campaign set-schedule requires a dueDate")
@@ -275,7 +292,13 @@ func (s *CampaignsService) SetSchedule(id, dueDate string) (*CampaignDetail, err
 	})
 }
 
-// CancelSchedule removes a campaign's schedule so it does not send.
+// CancelSchedule stops a campaign that is already scheduled (READY) from
+// being sent at its dueDate. It applies only to a schedule activated with
+// Send: a campaign that only had SetSchedule called is still DRAFT, so there
+// is nothing to cancel (call SetSchedule again to change its time).
+//
+// After cancelling, the campaign returns to DRAFT with an immediate send time
+// and no dueDate. To schedule it again, call SetSchedule and then Send.
 func (s *CampaignsService) CancelSchedule(id string) error {
 	return s.c.do(request{
 		capability: "Campaigns.CancelSchedule",

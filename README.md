@@ -4,8 +4,8 @@ The official Go SDK for [Mailtarget](https://mailtarget.co). It covers two thing
 
 - **Sending email** through Layang, Mailtarget's transactional sending API.
 - **Managing your account** through the Mailtarget Open API: contacts, segments, campaigns,
-  templates, forms, landing pages, senders and domains, suppressions, webhooks, analytics,
-  sub-accounts, API keys and usage.
+  templates, forms, landing pages, the file manager, senders and domains, suppressions, webhooks,
+  analytics, sub-accounts, API keys and usage.
 
 Each capability uses its own credential, and you can use sending on its own.
 
@@ -200,6 +200,7 @@ Each secret key is granted scopes. A call outside them is refused with HTTP 403.
 | Contacts, contact imports, Segments | `contacts.read` | `contacts.write` |
 | Forms | `forms.read` | `forms.write` |
 | Pages | `pages.read` | `pages.write` |
+| Files (file manager and its labels) | `files.read` | `files.write` |
 | Campaigns | `campaigns.read` | `campaigns.write` |
 | Templates | `campaigns.read` | — |
 | Analytics | `analytics.read` | — |
@@ -238,7 +239,7 @@ default:
 
 Calls whose response is `{"data": true|false}` (`APIKeys.Delete`, `Campaigns.Send`,
 `Campaigns.SendTest`, `Senders.Delete`, `Forms.Delete`, `Forms.Submit`, `Pages.Delete`,
-`Labels.Delete`, `Segments.Delete`, `Suppressions.Delete`, `Webhooks.Delete`) treat `data: false` as a failure: they
+`Files.Delete`, `Files.DeleteLabel`, `Labels.Delete`, `Segments.Delete`, `Suppressions.Delete`, `Webhooks.Delete`) treat `data: false` as a failure: they
 return an `*openapi.Error` with `Code` `openapi.ErrCodeOperationFailed` (`"OPERATION_FAILED"`) and
 the HTTP status received, so a `nil` error always means the operation was carried out.
 
@@ -377,10 +378,14 @@ campaign, err := client.Campaigns.Create(&openapi.CampaignRequest{
 // 3. Send yourself a preview.
 err = client.Campaigns.SendTest(campaign.ID, "qa@example.com")
 
-// 4. Send now, or schedule it. The due date is an RFC 3339 timestamp in the future.
+// 4a. Send now.
 err = client.Campaigns.Send(campaign.ID)
+
+// 4b. Or schedule it: SetSchedule only saves the send time (the campaign stays DRAFT),
+// Send then activates the schedule (READY, sent automatically at the due date).
+// The due date is an RFC 3339 timestamp in the future.
 campaign, err = client.Campaigns.SetSchedule(campaign.ID, time.Now().Add(24*time.Hour).Format(time.RFC3339))
-err = client.Campaigns.CancelSchedule(campaign.ID)
+err = client.Campaigns.Send(campaign.ID)
 
 // 5. Follow the results.
 stats, err := client.Campaigns.Analytics(campaign.ID)
@@ -553,8 +558,14 @@ campaign, err = client.Campaigns.Update("campaign-id", &openapi.CampaignRequest{
 err = client.Campaigns.Delete("campaign-id")
 
 err = client.Campaigns.SendTest("campaign-id", "qa@example.com")
-err = client.Campaigns.Send("campaign-id")
+err = client.Campaigns.Send("campaign-id") // sends now, or activates a saved schedule
+
+// Scheduling takes two steps. SetSchedule alone sends nothing: the campaign stays DRAFT.
 campaign, err = client.Campaigns.SetSchedule("campaign-id", "2026-10-01T09:00:00+07:00")
+err = client.Campaigns.Send("campaign-id") // now READY, sent automatically at dueDate
+
+// Only for an activated (READY) schedule: back to DRAFT, immediate send time, no dueDate.
+// To move a schedule that is not activated yet, call SetSchedule again instead.
 err = client.Campaigns.CancelSchedule("campaign-id")
 
 stats, err := client.Campaigns.Analytics("campaign-id")
@@ -705,6 +716,47 @@ err = client.Pages.Delete("page-id")             // not the default page (409); 
 
 `URL` is filled for drafts too but only serves once the page is published; the default page is
 served at the domain root.
+
+### Files
+
+The file manager: images, documents and media served from a public CDN URL, organised with their
+own labels (separate from contact labels).
+
+```go
+page, err := client.Files.List(&openapi.ListFilesParams{
+    Search: "banner",                                  // whole words of the name, not prefixes
+    Type:   []string{openapi.FileTypeImage, openapi.FileTypeDocument},
+    Labels: []string{"Promo"},                         // files carrying any of them
+    Sort:   openapi.FileSortSizeDesc,                  // default: openapi.FileSortCreatedAtDesc
+})
+
+// Upload from disk (named after the base name) or from any io.Reader.
+file, err := client.Files.UploadPath("./banner.png", "Promo")
+file, err = client.Files.Upload(&openapi.UploadFileRequest{
+    File: bytes.NewReader(data), Filename: "report.pdf", Labels: []string{"Reports"},
+})
+fmt.Println(file.URL) // public CDN URL; file.ThumbnailURL is set for images only
+
+file, err = client.Files.Get("file-id")
+
+// Rename and/or replace labels; nil fields are kept. The extension cannot change.
+name, labels := "hero-banner", []string{} // an empty slice clears the labels
+file, err = client.Files.Update("file-id", &openapi.UpdateFileRequest{Name: &name, Labels: &labels})
+
+err = client.Files.Delete("file-id") // its URL stops working everywhere it is used
+
+stats, err := client.Files.Stats() // StorageLimitBytes / StorageRemainingBytes are nil when unlimited
+
+labelsList, err := client.Files.Labels()           // name + file count
+label, err := client.Files.CreateLabel("my banner") // stored as "My Banner"
+label, err = client.Files.RenameLabel("my banner", "Hero")
+err = client.Files.DeleteLabel("Hero") // removed from every file; the files are kept
+```
+
+Allowed extensions: jpg, jpeg, jfif, png, gif, webp, tiff, avif, pdf, doc, docx, xls, xlsx, ppt,
+pptx, csv, txt, md, mp3, mp4, mov, avi. The name without extension may only contain letters, digits,
+spaces, `-` and `_`, and the content must match the extension. Uploads count against the plan's
+storage quota (HTTP 422 when it is used up).
 
 ### Key info
 

@@ -38,7 +38,7 @@ type request struct {
 	accept string
 
 	// files and formData send the request as multipart/form-data instead of
-	// JSON, for the CSV contact import.
+	// JSON, for the CSV contact import and the file manager upload.
 	files    []multipartFile
 	formData map[string]string
 }
